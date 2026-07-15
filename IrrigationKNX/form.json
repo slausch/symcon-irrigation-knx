@@ -1,0 +1,138 @@
+{
+  "elements": [
+    {
+      "type": "RowLayout",
+      "items": [
+        { "type": "CheckBox", "name": "Enabled", "caption": "Module enabled" },
+        { "type": "CheckBox", "name": "Simulation", "caption": "Simulation (no hardware writes)" },
+        { "type": "CheckBox", "name": "AutomaticDefault", "caption": "Automatic enabled initially" },
+        { "type": "CheckBox", "name": "LogOperations", "caption": "Log operations" }
+      ]
+    },
+    {
+      "type": "ExpansionPanel",
+      "caption": "Main valves",
+      "expanded": true,
+      "items": [
+        {
+          "type": "List",
+          "name": "MainValves",
+          "caption": "Up to two main valves; feedback is optional",
+          "rowCount": 2,
+          "add": false,
+          "delete": false,
+          "columns": [
+            { "caption": "Enabled", "name": "Enabled", "width": "80px", "add": false, "edit": { "type": "CheckBox" } },
+            { "caption": "Name", "name": "Name", "width": "160px", "add": "", "edit": { "type": "ValidationTextBox" } },
+            { "caption": "Boolean valve variable", "name": "VariableID", "width": "auto", "add": 0, "edit": { "type": "SelectVariable", "validVariableTypes": [0], "requiredAction": 1 } },
+            { "caption": "Boolean feedback", "name": "FeedbackID", "width": "auto", "add": 0, "edit": { "type": "SelectVariable", "validVariableTypes": [0] } },
+            { "caption": "Invert feedback", "name": "FeedbackInverted", "width": "110px", "add": false, "edit": { "type": "CheckBox" } }
+          ],
+          "values": [
+            { "Enabled": false, "Name": "Main valve 1", "VariableID": 0, "FeedbackID": 0, "FeedbackInverted": false },
+            { "Enabled": false, "Name": "Main valve 2", "VariableID": 0, "FeedbackID": 0, "FeedbackInverted": false }
+          ]
+        }
+      ]
+    },
+    {
+      "type": "ExpansionPanel",
+      "caption": "Zones",
+      "expanded": true,
+      "items": [
+        {
+          "type": "List",
+          "name": "Zones",
+          "caption": "Six sequential zones with up to two valves each",
+          "rowCount": 6,
+          "add": false,
+          "delete": false,
+          "columns": [
+            { "caption": "Enabled", "name": "Enabled", "width": "70px", "add": false, "edit": { "type": "CheckBox" } },
+            { "caption": "Name", "name": "Name", "width": "120px", "add": "", "edit": { "type": "ValidationTextBox" } },
+            { "caption": "Valve 1", "name": "Valve1ID", "width": "auto", "add": 0, "edit": { "type": "SelectVariable", "validVariableTypes": [0], "requiredAction": 1 } },
+            { "caption": "Valve 2", "name": "Valve2ID", "width": "auto", "add": 0, "edit": { "type": "SelectVariable", "validVariableTypes": [0], "requiredAction": 1 } },
+            { "caption": "Feedback 1", "name": "Feedback1ID", "width": "auto", "add": 0, "edit": { "type": "SelectVariable", "validVariableTypes": [0] } },
+            { "caption": "Feedback 2", "name": "Feedback2ID", "width": "auto", "add": 0, "edit": { "type": "SelectVariable", "validVariableTypes": [0] } },
+            { "caption": "Inv. FB 1", "name": "Feedback1Inverted", "width": "70px", "add": false, "edit": { "type": "CheckBox" } },
+            { "caption": "Inv. FB 2", "name": "Feedback2Inverted", "width": "70px", "add": false, "edit": { "type": "CheckBox" } },
+            { "caption": "Runtime", "name": "RuntimeMinutes", "width": "90px", "add": 10, "edit": { "type": "NumberSpinner", "minimum": 1, "maximum": 240, "suffix": " min" } }
+          ],
+          "values": [
+            { "Enabled": false, "Name": "Zone 1", "Valve1ID": 0, "Valve2ID": 0, "Feedback1ID": 0, "Feedback2ID": 0, "Feedback1Inverted": false, "Feedback2Inverted": false, "RuntimeMinutes": 10 },
+            { "Enabled": false, "Name": "Zone 2", "Valve1ID": 0, "Valve2ID": 0, "Feedback1ID": 0, "Feedback2ID": 0, "Feedback1Inverted": false, "Feedback2Inverted": false, "RuntimeMinutes": 10 },
+            { "Enabled": false, "Name": "Zone 3", "Valve1ID": 0, "Valve2ID": 0, "Feedback1ID": 0, "Feedback2ID": 0, "Feedback1Inverted": false, "Feedback2Inverted": false, "RuntimeMinutes": 10 },
+            { "Enabled": false, "Name": "Zone 4", "Valve1ID": 0, "Valve2ID": 0, "Feedback1ID": 0, "Feedback2ID": 0, "Feedback1Inverted": false, "Feedback2Inverted": false, "RuntimeMinutes": 10 },
+            { "Enabled": false, "Name": "Zone 5", "Valve1ID": 0, "Valve2ID": 0, "Feedback1ID": 0, "Feedback2ID": 0, "Feedback1Inverted": false, "Feedback2Inverted": false, "RuntimeMinutes": 10 },
+            { "Enabled": false, "Name": "Zone 6", "Valve1ID": 0, "Valve2ID": 0, "Feedback1ID": 0, "Feedback2ID": 0, "Feedback1Inverted": false, "Feedback2Inverted": false, "RuntimeMinutes": 10 }
+          ]
+        }
+      ]
+    },
+    {
+      "type": "ExpansionPanel",
+      "caption": "Schedule",
+      "items": [
+        {
+          "type": "RowLayout",
+          "items": [
+            { "type": "ValidationTextBox", "name": "StartTime", "caption": "Start time (HH:MM)" },
+            { "type": "NumberSpinner", "name": "IntervalDays", "caption": "Every n days", "minimum": 1, "maximum": 365 },
+            { "type": "ValidationTextBox", "name": "IntervalAnchor", "caption": "Anchor date (YYYY-MM-DD)" }
+          ]
+        },
+        {
+          "type": "RowLayout",
+          "items": [
+            { "type": "CheckBox", "name": "Monday", "caption": "Monday" },
+            { "type": "CheckBox", "name": "Tuesday", "caption": "Tuesday" },
+            { "type": "CheckBox", "name": "Wednesday", "caption": "Wednesday" },
+            { "type": "CheckBox", "name": "Thursday", "caption": "Thursday" },
+            { "type": "CheckBox", "name": "Friday", "caption": "Friday" },
+            { "type": "CheckBox", "name": "Saturday", "caption": "Saturday" },
+            { "type": "CheckBox", "name": "Sunday", "caption": "Sunday" }
+          ]
+        }
+      ]
+    },
+    {
+      "type": "ExpansionPanel",
+      "caption": "Sensors and safety",
+      "items": [
+        {
+          "type": "RowLayout",
+          "items": [
+            { "type": "SelectVariable", "name": "RainSensorID", "caption": "Boolean rain sensor", "validVariableTypes": [0] },
+            { "type": "CheckBox", "name": "RainActiveValue", "caption": "Rain active value" },
+            { "type": "SelectVariable", "name": "SoilMoistureSensorID", "caption": "Soil moisture", "validVariableTypes": [1, 2] },
+            { "type": "NumberSpinner", "name": "SoilMoistureLimit", "caption": "Soil moisture limit", "digits": 2 },
+            { "type": "CheckBox", "name": "SoilBlocksAboveLimit", "caption": "Block at/above limit" }
+          ]
+        },
+        {
+          "type": "RowLayout",
+          "items": [
+            { "type": "NumberSpinner", "name": "MasterLeadSeconds", "caption": "Main valve lead", "minimum": 0, "maximum": 300, "suffix": " s" },
+            { "type": "NumberSpinner", "name": "InterZoneSeconds", "caption": "Delay between zones", "minimum": 0, "maximum": 300, "suffix": " s" },
+            { "type": "NumberSpinner", "name": "FeedbackTimeoutSeconds", "caption": "Feedback timeout", "minimum": 1, "maximum": 300, "suffix": " s" },
+            { "type": "NumberSpinner", "name": "MaximumProgramMinutes", "caption": "Maximum program runtime", "minimum": 1, "maximum": 1440, "suffix": " min" }
+          ]
+        }
+      ]
+    }
+  ],
+  "actions": [
+    { "type": "Label", "label": "Use simulation for initial commissioning. Emergency stop closes every configured output." },
+    {
+      "type": "RowLayout",
+      "items": [
+        { "type": "Button", "caption": "Start program", "onClick": "IRRKNX_StartProgram($id, true);" },
+        { "type": "Button", "caption": "Stop", "onClick": "IRRKNX_Stop($id);" },
+        { "type": "Button", "caption": "Emergency stop", "confirm": "Close all configured valves now?", "onClick": "IRRKNX_EmergencyStop($id, 'Emergency stop from configuration form');" }
+      ]
+    }
+  ],
+  "status": [
+    { "code": 200, "icon": "error", "caption": "Invalid configuration" }
+  ]
+}
