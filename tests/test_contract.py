@@ -41,6 +41,9 @@ class ModuleContractTest(unittest.TestCase):
             for column in table["columns"]:
                 self.assertRegex(column["width"], r"^\d+px$")
 
+        actions = form["actions"][1]["items"]
+        self.assertTrue(any(item.get("caption") == "Pause / Resume" for item in actions))
+
     def test_hardware_write_is_centralized_and_uses_request_action(self):
         source = MODULE.read_text(encoding="utf-8")
         calls = re.findall(r"(?<!function )RequestAction\s*\(", source)

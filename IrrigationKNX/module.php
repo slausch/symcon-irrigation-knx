@@ -26,6 +26,7 @@ class IrrigationKNX extends IPSModule
 
         $this->RegisterPropertyBoolean('Enabled', false);
         $this->RegisterPropertyBoolean('Simulation', true);
+        $this->RegisterPropertyInteger('SimulationRuntimeMinutes', 1);
         $this->RegisterPropertyBoolean('AutomaticDefault', false);
         $this->RegisterPropertyString('MainValves', '[{"Enabled":false,"Name":"Main valve 1","VariableID":0,"FeedbackID":0,"FeedbackInverted":false},{"Enabled":false,"Name":"Main valve 2","VariableID":0,"FeedbackID":0,"FeedbackInverted":false}]');
         $this->RegisterPropertyString('Zones', $this->defaultZonesJson());
@@ -344,6 +345,15 @@ class IrrigationKNX extends IPSModule
         return true;
     }
 
+    public function TogglePause(): bool
+    {
+        if ($this->GetBuffer('Phase') === 'paused') {
+            return $this->Resume();
+        }
+
+        return $this->Pause();
+    }
+
     public function CheckSchedule(): void
     {
         if (!$this->ReadPropertyBoolean('Enabled') || !$this->getValueBoolean('Automatic') || $this->isRunning()) {
@@ -513,8 +523,12 @@ class IrrigationKNX extends IPSModule
             return;
         }
 
-        $override = (int) $this->GetBuffer('RuntimeOverrideMinutes');
-        $minutes = $override > 0 ? $override : max(1, (int) ($zone['RuntimeMinutes'] ?? 1));
+        if ($this->GetBuffer('RunSimulation') === '1') {
+            $minutes = max(1, min(240, $this->ReadPropertyInteger('SimulationRuntimeMinutes')));
+        } else {
+            $override = (int) $this->GetBuffer('RuntimeOverrideMinutes');
+            $minutes = $override > 0 ? $override : max(1, (int) ($zone['RuntimeMinutes'] ?? 1));
+        }
         $deadline = time() + ($minutes * 60);
 
         $this->SetBuffer('Phase', 'running-zone');

@@ -5,6 +5,7 @@
       "items": [
         { "type": "CheckBox", "name": "Enabled", "caption": "Module enabled" },
         { "type": "CheckBox", "name": "Simulation", "caption": "Simulation (no hardware writes)" },
+        { "type": "NumberSpinner", "name": "SimulationRuntimeMinutes", "caption": "Test runtime (simulation only)", "minimum": 1, "maximum": 240, "suffix": " min" },
         { "type": "CheckBox", "name": "AutomaticDefault", "caption": "Automatic enabled initially" },
         { "type": "CheckBox", "name": "LogOperations", "caption": "Log operations" }
       ]
@@ -131,6 +132,7 @@
       "type": "RowLayout",
       "items": [
         { "type": "Button", "caption": "Start program", "onClick": "IRRKNX_StartProgram($id, true);" },
+        { "type": "Button", "caption": "Pause / Resume", "onClick": "IRRKNX_TogglePause($id);" },
         { "type": "Button", "caption": "Stop", "onClick": "IRRKNX_Stop($id);" },
         { "type": "Button", "caption": "Emergency stop", "confirm": "Close all configured valves now?", "onClick": "IRRKNX_EmergencyStop($id, 'Emergency stop from configuration form');" }
       ]

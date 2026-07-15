@@ -17,6 +17,7 @@ Das Modul wurde neu strukturiert. Die öffentliche Referenz [`elueckel/irrigatio
 - Rückmelde-Timeout, maximale Gesamtlaufzeit und sofortiger Sensor-Stopp
 - sicherer Stopp bei Deaktivierung, Konfigurationsänderung und Neustart
 - Simulationsmodus ohne Hardware-Schaltbefehle
+- separate Testlaufzeit für die Simulation (Standard: 1 Minute je Zone)
 - Status-, Restlaufzeit-, Sperr- und Fehlervariablen für die Visualisierung
 
 ## Zentrales Sicherheitsprinzip
@@ -38,7 +39,7 @@ Nach dem Laden erscheint das Gerät unter dem eindeutigen Namen **Irrigation KNX
 
 Empfohlene Erstinbetriebnahme:
 
-1. Instanz anlegen und `Simulation` aktiviert lassen.
+1. Instanz anlegen und `Simulation` aktiviert lassen. Die `Testlaufzeit (nur Simulation)` steht standardmäßig auf 1 Minute je Zone.
 2. Hauptventile und Zonen als Boolean-Variablen auswählen.
 3. Laufzeiten, Sensoren, Rückmeldungen und Sicherheitszeiten konfigurieren.
 4. In der Simulation Gesamtprogramm, Einzelzonen, Regenstopp und Rückmeldefehler prüfen.
@@ -62,6 +63,7 @@ Die Instanz legt folgende bedienbare Variablen an:
 IRRKNX_StartProgram($InstanceID, true);
 IRRKNX_StartZone($InstanceID, 3, 15);
 IRRKNX_Pause($InstanceID);
+IRRKNX_TogglePause($InstanceID); // pausiert bzw. setzt einen pausierten Lauf fort
 IRRKNX_Resume($InstanceID);
 IRRKNX_Stop($InstanceID);
 IRRKNX_EmergencyStop($InstanceID, 'Leckage erkannt');

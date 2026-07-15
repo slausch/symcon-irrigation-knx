@@ -3,6 +3,7 @@
     "de": {
       "Module enabled": "Modul aktiv",
       "Simulation (no hardware writes)": "Simulation (keine Hardware-Schaltbefehle)",
+      "Test runtime (simulation only)": "Testlaufzeit (nur Simulation)",
       "Automatic enabled initially": "Automatik initial aktiv",
       "Log operations": "Vorgänge protokollieren",
       "Main valves": "Hauptventile",
@@ -42,6 +43,7 @@
       "Maximum program runtime": "Maximale Programmlaufzeit",
       "Use simulation for initial commissioning. Emergency stop closes every configured output.": "Für die Erstinbetriebnahme Simulation verwenden. Der Not-Aus schließt jeden konfigurierten Ausgang.",
       "Start program": "Programm starten",
+      "Pause / Resume": "Pause / Fortsetzen",
       "Stop": "Stopp",
       "Emergency stop": "Not-Aus",
       "Close all configured valves now?": "Jetzt alle konfigurierten Ventile schließen?",

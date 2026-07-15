@@ -77,6 +77,21 @@ $tests['sequence skips disabled zones and reaches zone 5'] = static function ():
     assertSameValue(false, $states[(string) $valve5], 'Zone 5 must be closed');
 };
 
+$tests['simulation uses the separate test runtime'] = static function (): void {
+    $zoneValve = testCreateVariable(0, false);
+    $configuredZone = zone(true, $zoneValve);
+    $configuredZone['RuntimeMinutes'] = 60;
+    $module = newModule([
+        'Enabled' => true,
+        'Simulation' => true,
+        'SimulationRuntimeMinutes' => 1,
+        'MasterLeadSeconds' => 0,
+        'Zones' => json_encode([$configuredZone])
+    ]);
+    assertSameValue(true, $module->StartProgram(true), 'Simulation should start');
+    assertSameValue(60, GetValue($module->GetIDForIdent('RemainingSeconds')), 'Simulation must use the one-minute test runtime');
+};
+
 $tests['both main valves use their own RequestAction target'] = static function (): void {
     $GLOBALS['IPS_TEST_ACTIONS'] = [];
     $main1 = testCreateVariable(0, false);
@@ -180,6 +195,21 @@ $tests['pause closes and resume continues the same remaining runtime'] = static 
     assertSameValue(1, GetValue($module->GetIDForIdent('CurrentZone')), 'Current zone should remain unchanged');
     $states = json_decode($module->GetBuffer('SimulatedOutputs'), true);
     assertSameValue(true, $states[(string) $zoneValve], 'Resumed zone must reopen');
+};
+
+$tests['configuration action toggles pause and resume'] = static function (): void {
+    $zoneValve = testCreateVariable(0, false);
+    $module = newModule([
+        'Enabled' => true,
+        'Simulation' => true,
+        'MasterLeadSeconds' => 0,
+        'Zones' => json_encode([zone(true, $zoneValve)])
+    ]);
+    assertSameValue(true, $module->StartProgram(true), 'Program should start');
+    assertSameValue(true, $module->TogglePause(), 'Toggle should pause a running zone');
+    assertSameValue('paused', $module->GetBuffer('Phase'), 'Toggle should set paused phase');
+    assertSameValue(true, $module->TogglePause(), 'Toggle should resume a paused zone');
+    assertSameValue('running-zone', $module->GetBuffer('Phase'), 'Toggle should resume the same zone');
 };
 
 $tests['migration preserves six configured zones and appends four disabled zones'] = static function (): void {
