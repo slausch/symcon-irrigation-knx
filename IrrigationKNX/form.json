@@ -22,11 +22,11 @@
           "add": false,
           "delete": false,
           "columns": [
-            { "caption": "Enabled", "name": "Enabled", "width": "80px", "add": false, "edit": { "type": "CheckBox" } },
-            { "caption": "Name", "name": "Name", "width": "160px", "add": "", "edit": { "type": "ValidationTextBox" } },
-            { "caption": "Boolean valve variable", "name": "VariableID", "width": "auto", "add": 0, "edit": { "type": "SelectVariable", "validVariableTypes": [0], "requiredAction": 1 } },
-            { "caption": "Boolean feedback", "name": "FeedbackID", "width": "auto", "add": 0, "edit": { "type": "SelectVariable", "validVariableTypes": [0] } },
-            { "caption": "Invert feedback", "name": "FeedbackInverted", "width": "110px", "add": false, "edit": { "type": "CheckBox" } }
+            { "caption": "Enabled", "name": "Enabled", "width": "70px", "add": false, "edit": { "type": "CheckBox" } },
+            { "caption": "Name", "name": "Name", "width": "180px", "add": "", "edit": { "type": "ValidationTextBox" } },
+            { "caption": "Boolean valve variable", "name": "VariableID", "width": "380px", "add": 0, "edit": { "type": "SelectVariable", "validVariableTypes": [0], "requiredAction": 1 } },
+            { "caption": "Boolean feedback", "name": "FeedbackID", "width": "380px", "add": 0, "edit": { "type": "SelectVariable", "validVariableTypes": [0] } },
+            { "caption": "Invert feedback", "name": "FeedbackInverted", "width": "120px", "add": false, "edit": { "type": "CheckBox" } }
           ],
           "values": [
             { "Enabled": false, "Name": "Main valve 1", "VariableID": 0, "FeedbackID": 0, "FeedbackInverted": false },
@@ -43,20 +43,20 @@
         {
           "type": "List",
           "name": "Zones",
-          "caption": "Six sequential zones with up to two valves each",
-          "rowCount": 6,
+          "caption": "Ten sequential zones with up to two valves each",
+          "rowCount": 10,
           "add": false,
           "delete": false,
           "columns": [
-            { "caption": "Enabled", "name": "Enabled", "width": "70px", "add": false, "edit": { "type": "CheckBox" } },
-            { "caption": "Name", "name": "Name", "width": "120px", "add": "", "edit": { "type": "ValidationTextBox" } },
-            { "caption": "Valve 1", "name": "Valve1ID", "width": "auto", "add": 0, "edit": { "type": "SelectVariable", "validVariableTypes": [0], "requiredAction": 1 } },
-            { "caption": "Valve 2", "name": "Valve2ID", "width": "auto", "add": 0, "edit": { "type": "SelectVariable", "validVariableTypes": [0], "requiredAction": 1 } },
-            { "caption": "Feedback 1", "name": "Feedback1ID", "width": "auto", "add": 0, "edit": { "type": "SelectVariable", "validVariableTypes": [0] } },
-            { "caption": "Feedback 2", "name": "Feedback2ID", "width": "auto", "add": 0, "edit": { "type": "SelectVariable", "validVariableTypes": [0] } },
-            { "caption": "Inv. FB 1", "name": "Feedback1Inverted", "width": "70px", "add": false, "edit": { "type": "CheckBox" } },
-            { "caption": "Inv. FB 2", "name": "Feedback2Inverted", "width": "70px", "add": false, "edit": { "type": "CheckBox" } },
-            { "caption": "Runtime", "name": "RuntimeMinutes", "width": "90px", "add": 10, "edit": { "type": "NumberSpinner", "minimum": 1, "maximum": 240, "suffix": " min" } }
+            { "caption": "Enabled", "name": "Enabled", "width": "65px", "add": false, "edit": { "type": "CheckBox" } },
+            { "caption": "Name", "name": "Name", "width": "140px", "add": "", "edit": { "type": "ValidationTextBox" } },
+            { "caption": "Valve 1", "name": "Valve1ID", "width": "210px", "add": 0, "edit": { "type": "SelectVariable", "validVariableTypes": [0], "requiredAction": 1 } },
+            { "caption": "Valve 2", "name": "Valve2ID", "width": "210px", "add": 0, "edit": { "type": "SelectVariable", "validVariableTypes": [0], "requiredAction": 1 } },
+            { "caption": "Feedback 1", "name": "Feedback1ID", "width": "210px", "add": 0, "edit": { "type": "SelectVariable", "validVariableTypes": [0] } },
+            { "caption": "Feedback 2", "name": "Feedback2ID", "width": "210px", "add": 0, "edit": { "type": "SelectVariable", "validVariableTypes": [0] } },
+            { "caption": "Inv. FB 1", "name": "Feedback1Inverted", "width": "75px", "add": false, "edit": { "type": "CheckBox" } },
+            { "caption": "Inv. FB 2", "name": "Feedback2Inverted", "width": "75px", "add": false, "edit": { "type": "CheckBox" } },
+            { "caption": "Runtime", "name": "RuntimeMinutes", "width": "85px", "add": 10, "edit": { "type": "NumberSpinner", "minimum": 1, "maximum": 240, "suffix": " min" } }
           ],
           "values": [
             { "Enabled": false, "Name": "Zone 1", "Valve1ID": 0, "Valve2ID": 0, "Feedback1ID": 0, "Feedback2ID": 0, "Feedback1Inverted": false, "Feedback2Inverted": false, "RuntimeMinutes": 10 },
@@ -64,7 +64,11 @@
             { "Enabled": false, "Name": "Zone 3", "Valve1ID": 0, "Valve2ID": 0, "Feedback1ID": 0, "Feedback2ID": 0, "Feedback1Inverted": false, "Feedback2Inverted": false, "RuntimeMinutes": 10 },
             { "Enabled": false, "Name": "Zone 4", "Valve1ID": 0, "Valve2ID": 0, "Feedback1ID": 0, "Feedback2ID": 0, "Feedback1Inverted": false, "Feedback2Inverted": false, "RuntimeMinutes": 10 },
             { "Enabled": false, "Name": "Zone 5", "Valve1ID": 0, "Valve2ID": 0, "Feedback1ID": 0, "Feedback2ID": 0, "Feedback1Inverted": false, "Feedback2Inverted": false, "RuntimeMinutes": 10 },
-            { "Enabled": false, "Name": "Zone 6", "Valve1ID": 0, "Valve2ID": 0, "Feedback1ID": 0, "Feedback2ID": 0, "Feedback1Inverted": false, "Feedback2Inverted": false, "RuntimeMinutes": 10 }
+            { "Enabled": false, "Name": "Zone 6", "Valve1ID": 0, "Valve2ID": 0, "Feedback1ID": 0, "Feedback2ID": 0, "Feedback1Inverted": false, "Feedback2Inverted": false, "RuntimeMinutes": 10 },
+            { "Enabled": false, "Name": "Zone 7", "Valve1ID": 0, "Valve2ID": 0, "Feedback1ID": 0, "Feedback2ID": 0, "Feedback1Inverted": false, "Feedback2Inverted": false, "RuntimeMinutes": 10 },
+            { "Enabled": false, "Name": "Zone 8", "Valve1ID": 0, "Valve2ID": 0, "Feedback1ID": 0, "Feedback2ID": 0, "Feedback1Inverted": false, "Feedback2Inverted": false, "RuntimeMinutes": 10 },
+            { "Enabled": false, "Name": "Zone 9", "Valve1ID": 0, "Valve2ID": 0, "Feedback1ID": 0, "Feedback2ID": 0, "Feedback1Inverted": false, "Feedback2Inverted": false, "RuntimeMinutes": 10 },
+            { "Enabled": false, "Name": "Zone 10", "Valve1ID": 0, "Valve2ID": 0, "Feedback1ID": 0, "Feedback2ID": 0, "Feedback1Inverted": false, "Feedback2Inverted": false, "RuntimeMinutes": 10 }
           ]
         }
       ]

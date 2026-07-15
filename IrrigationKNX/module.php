@@ -15,9 +15,10 @@ class IrrigationKNX extends IPSModule
     private const STATE_BLOCKED = 4;
     private const STATE_ERROR = 5;
     private const STATE_STOPPING = 6;
+    private const STATE_PAUSED = 7;
 
     private const MESSAGE_VARIABLE_UPDATE = 10603;
-    private const MAX_ZONES = 6;
+    private const MAX_ZONES = 10;
 
     public function Create(): void
     {
@@ -27,7 +28,7 @@ class IrrigationKNX extends IPSModule
         $this->RegisterPropertyBoolean('Simulation', true);
         $this->RegisterPropertyBoolean('AutomaticDefault', false);
         $this->RegisterPropertyString('MainValves', '[{"Enabled":false,"Name":"Main valve 1","VariableID":0,"FeedbackID":0,"FeedbackInverted":false},{"Enabled":false,"Name":"Main valve 2","VariableID":0,"FeedbackID":0,"FeedbackInverted":false}]');
-        $this->RegisterPropertyString('Zones', '[{"Enabled":false,"Name":"Zone 1","Valve1ID":0,"Valve2ID":0,"Feedback1ID":0,"Feedback2ID":0,"Feedback1Inverted":false,"Feedback2Inverted":false,"RuntimeMinutes":10},{"Enabled":false,"Name":"Zone 2","Valve1ID":0,"Valve2ID":0,"Feedback1ID":0,"Feedback2ID":0,"Feedback1Inverted":false,"Feedback2Inverted":false,"RuntimeMinutes":10},{"Enabled":false,"Name":"Zone 3","Valve1ID":0,"Valve2ID":0,"Feedback1ID":0,"Feedback2ID":0,"Feedback1Inverted":false,"Feedback2Inverted":false,"RuntimeMinutes":10},{"Enabled":false,"Name":"Zone 4","Valve1ID":0,"Valve2ID":0,"Feedback1ID":0,"Feedback2ID":0,"Feedback1Inverted":false,"Feedback2Inverted":false,"RuntimeMinutes":10},{"Enabled":false,"Name":"Zone 5","Valve1ID":0,"Valve2ID":0,"Feedback1ID":0,"Feedback2ID":0,"Feedback1Inverted":false,"Feedback2Inverted":false,"RuntimeMinutes":10},{"Enabled":false,"Name":"Zone 6","Valve1ID":0,"Valve2ID":0,"Feedback1ID":0,"Feedback2ID":0,"Feedback1Inverted":false,"Feedback2Inverted":false,"RuntimeMinutes":10}]');
+        $this->RegisterPropertyString('Zones', $this->defaultZonesJson());
 
         $this->RegisterPropertyString('StartTime', '05:00');
         $this->RegisterPropertyBoolean('Monday', true);
@@ -65,7 +66,9 @@ class IrrigationKNX extends IPSModule
         $this->EnableAction('ManualZone');
         $this->RegisterVariableInteger('ManualRuntime', $this->Translate('Manual runtime'), 'IRRKNX.Minutes', 40);
         $this->EnableAction('ManualRuntime');
-        $this->RegisterVariableBoolean('EmergencyStop', $this->Translate('Emergency stop'), '~Switch', 50);
+        $this->RegisterVariableBoolean('Pause', $this->Translate('Pause'), '~Switch', 50);
+        $this->EnableAction('Pause');
+        $this->RegisterVariableBoolean('EmergencyStop', $this->Translate('Emergency stop'), '~Switch', 60);
         $this->EnableAction('EmergencyStop');
 
         $this->RegisterVariableInteger('State', $this->Translate('State'), 'IRRKNX.State', 100);
@@ -76,10 +79,35 @@ class IrrigationKNX extends IPSModule
         $this->RegisterVariableString('OutputState', $this->Translate('Output state'), '', 150);
     }
 
+    public function Migrate($JSONData)
+    {
+        parent::Migrate($JSONData);
+        $data = json_decode((string) $JSONData);
+        if (!is_object($data) || !isset($data->configuration) || !isset($data->configuration->Zones)) {
+            return '';
+        }
+
+        $zones = json_decode((string) $data->configuration->Zones, true);
+        if (!is_array($zones) || count($zones) >= self::MAX_ZONES) {
+            return '';
+        }
+        for ($zone = count($zones) + 1; $zone <= self::MAX_ZONES; $zone++) {
+            $zones[] = $this->defaultZone($zone);
+        }
+        $data->configuration->Zones = json_encode($zones);
+        return json_encode($data);
+    }
+
     public function ApplyChanges(): void
     {
         parent::ApplyChanges();
 
+        // Register newly introduced runtime controls for existing instances as well.
+        $this->RegisterVariableBoolean('Pause', $this->Translate('Pause'), '~Switch', 50);
+        $this->EnableAction('Pause');
+        $this->RegisterVariableBoolean('EmergencyStop', $this->Translate('Emergency stop'), '~Switch', 60);
+        $this->EnableAction('EmergencyStop');
+        $this->registerProfiles();
         $this->unsubscribeVariables();
         if ($this->isRunning()) {
             $this->safeShutdown($this->Translate('Recovered interrupted run or configuration change'), true);
@@ -95,6 +123,7 @@ class IrrigationKNX extends IPSModule
             $this->writeValue('LastError', '');
             $this->SetBuffer('VariablesInitialized', '1');
         }
+        $this->updateZoneProfile();
 
         if (count($errors) > 0) {
             $this->SetTimerInterval('ScheduleTimer', 0);
@@ -151,6 +180,20 @@ class IrrigationKNX extends IPSModule
 
             case 'ManualRuntime':
                 $this->writeValue('ManualRuntime', max(1, min(240, (int) $Value)));
+                break;
+
+            case 'Pause':
+                if ((bool) $Value) {
+                    if (!$this->Pause()) {
+                        $this->writeValue('Pause', false);
+                    }
+                } elseif ($this->GetBuffer('Phase') === 'paused') {
+                    if (!$this->Resume()) {
+                        $this->writeValue('Pause', true);
+                    }
+                } else {
+                    $this->writeValue('Pause', false);
+                }
                 break;
 
             case 'EmergencyStop':
@@ -227,6 +270,80 @@ class IrrigationKNX extends IPSModule
         $this->safeShutdown($reason, true);
     }
 
+    public function Pause(): bool
+    {
+        if (!$this->isRunning() || $this->GetBuffer('Phase') !== 'running-zone') {
+            $this->setError($this->Translate('Pause is only possible while a zone is watering'));
+            return false;
+        }
+
+        $zoneNumber = $this->getValueInteger('CurrentZone');
+        $zone = $this->getZones()[$zoneNumber - 1] ?? null;
+        if (!is_array($zone)) {
+            $this->safeShutdown($this->Translate('Unable to pause an invalid zone'), true);
+            return false;
+        }
+
+        $remaining = max(1, (int) $this->GetBuffer('PhaseDeadline') - time());
+        $this->SetBuffer('PausedRemainingSeconds', (string) $remaining);
+        $this->SetBuffer('PauseStartedAt', (string) time());
+        if (!$this->setZoneValves($zone, false) || !$this->setMainValves(false)) {
+            $this->safeShutdown($this->Translate('Unable to close valves for pause'), true);
+            return false;
+        }
+
+        $this->SetBuffer('Phase', 'paused');
+        $this->SetBuffer('PhaseDeadline', '0');
+        $this->writeValue('Pause', true);
+        $this->writeValue('RemainingSeconds', $remaining);
+        $this->writeValue('State', self::STATE_PAUSED);
+        $this->armFeedbackDeadline();
+        $this->log(sprintf($this->Translate('Zone %s paused with %d second(s) remaining'), $this->zoneName($zoneNumber), $remaining));
+        return true;
+    }
+
+    public function Resume(): bool
+    {
+        if (!$this->isRunning() || $this->GetBuffer('Phase') !== 'paused') {
+            $this->setError($this->Translate('No paused irrigation run is available'));
+            return false;
+        }
+        $this->refreshSensorState();
+        if ($this->isBlockedBySensors()) {
+            $this->setError($this->Translate('Resume blocked by rain or soil moisture sensor'));
+            return false;
+        }
+        if (!$this->feedbackMatchesExpected()) {
+            if (time() >= (int) $this->GetBuffer('FeedbackDeadline')) {
+                $this->safeShutdown($this->Translate('Safety stop: paused zone did not close'), true);
+            } else {
+                $this->setError($this->Translate('Resume waits for closed valve feedback'));
+            }
+            return false;
+        }
+
+        $pauseStartedAt = (int) $this->GetBuffer('PauseStartedAt');
+        $programStartedAt = (int) $this->GetBuffer('ProgramStartedAt');
+        if ($pauseStartedAt > 0 && $programStartedAt > 0) {
+            $this->SetBuffer('ProgramStartedAt', (string) ($programStartedAt + max(0, time() - $pauseStartedAt)));
+        }
+        if (!$this->setMainValves(true)) {
+            $this->safeShutdown($this->Translate('Unable to reopen a main valve after pause'), true);
+            return false;
+        }
+
+        $this->writeValue('LastError', '');
+        $this->writeValue('Pause', false);
+        $this->writeValue('State', self::STATE_OPENING_MASTER);
+        $this->SetBuffer('Phase', 'resuming-master');
+        $this->SetBuffer('PhaseDeadline', (string) (time() + max(0, $this->ReadPropertyInteger('MasterLeadSeconds'))));
+        $this->armFeedbackDeadline();
+        if ($this->ReadPropertyInteger('MasterLeadSeconds') === 0 && $this->feedbackMatchesExpected()) {
+            $this->resumeCurrentZone();
+        }
+        return true;
+    }
+
     public function CheckSchedule(): void
     {
         if (!$this->ReadPropertyBoolean('Enabled') || !$this->getValueBoolean('Automatic') || $this->isRunning()) {
@@ -270,9 +387,10 @@ class IrrigationKNX extends IPSModule
             return;
         }
 
+        $phase = $this->GetBuffer('Phase');
         $startedAt = (int) $this->GetBuffer('ProgramStartedAt');
         $maximumSeconds = max(1, $this->ReadPropertyInteger('MaximumProgramMinutes')) * 60;
-        if ($startedAt > 0 && time() - $startedAt > $maximumSeconds) {
+        if ($phase !== 'paused' && $startedAt > 0 && time() - $startedAt > $maximumSeconds) {
             $this->safeShutdown($this->Translate('Safety stop: maximum program runtime exceeded'), true);
             return;
         }
@@ -283,7 +401,6 @@ class IrrigationKNX extends IPSModule
             return;
         }
 
-        $phase = $this->GetBuffer('Phase');
         $deadline = (int) $this->GetBuffer('PhaseDeadline');
         $now = time();
 
@@ -295,6 +412,21 @@ class IrrigationKNX extends IPSModule
                 return;
             }
             $this->startCurrentZone();
+            return;
+        }
+
+        if ($phase === 'resuming-master') {
+            if ($now < $deadline) {
+                return;
+            }
+            if (!$this->feedbackMatchesExpected() && $feedbackDeadline > $now) {
+                return;
+            }
+            $this->resumeCurrentZone();
+            return;
+        }
+
+        if ($phase === 'paused') {
             return;
         }
 
@@ -343,6 +475,7 @@ class IrrigationKNX extends IPSModule
         $this->SetBuffer('StopInProgress', '0');
         $this->writeValue('LastError', '');
         $this->writeValue('ProgramActive', true);
+        $this->writeValue('Pause', false);
         $this->writeValue('CurrentZone', 0);
         $this->writeValue('State', self::STATE_OPENING_MASTER);
 
@@ -391,6 +524,29 @@ class IrrigationKNX extends IPSModule
         $this->writeValue('State', self::STATE_RUNNING);
         $this->armFeedbackDeadline();
         $this->log(sprintf('Zone %d opened for %d minute(s)', $zoneNumber, $minutes));
+    }
+
+    private function resumeCurrentZone(): void
+    {
+        $zoneNumber = $this->getValueInteger('CurrentZone');
+        $zone = $this->getZones()[$zoneNumber - 1] ?? null;
+        if (!is_array($zone)) {
+            $this->safeShutdown($this->Translate('Unable to resume an invalid zone'), true);
+            return;
+        }
+        if (!$this->setZoneValves($zone, true)) {
+            $this->safeShutdown(sprintf($this->Translate('Unable to reopen zone %s'), $this->zoneName($zoneNumber)), true);
+            return;
+        }
+
+        $remaining = max(1, (int) $this->GetBuffer('PausedRemainingSeconds'));
+        $this->SetBuffer('Phase', 'running-zone');
+        $this->SetBuffer('PhaseDeadline', (string) (time() + $remaining));
+        $this->SetBuffer('PauseStartedAt', '0');
+        $this->writeValue('RemainingSeconds', $remaining);
+        $this->writeValue('State', self::STATE_RUNNING);
+        $this->armFeedbackDeadline();
+        $this->log(sprintf($this->Translate('Zone %s resumed with %d second(s) remaining'), $this->zoneName($zoneNumber), $remaining));
     }
 
     private function finishCurrentZone(): void
@@ -484,9 +640,12 @@ class IrrigationKNX extends IPSModule
         $this->SetBuffer('FeedbackDeadline', '0');
         $this->SetBuffer('ProgramStartedAt', '0');
         $this->writeValue('ProgramActive', false);
+        $this->writeValue('Pause', false);
         $this->writeValue('ManualZone', 0);
         $this->writeValue('CurrentZone', 0);
         $this->writeValue('RemainingSeconds', 0);
+        $this->SetBuffer('PausedRemainingSeconds', '0');
+        $this->SetBuffer('PauseStartedAt', '0');
         $finalState = ($isError || count($failures) > 0) ? self::STATE_ERROR : self::STATE_IDLE;
         $this->SetBuffer('ShutdownFinalState', (string) $finalState);
         $this->SetBuffer('ShutdownReason', $reason);
@@ -733,7 +892,7 @@ class IrrigationKNX extends IPSModule
         $errors = [];
         $rawZones = $this->decodeListProperty('Zones');
         if (count($rawZones) > self::MAX_ZONES) {
-            $errors[] = $this->Translate('A maximum of six zones is supported');
+            $errors[] = $this->Translate('A maximum of ten zones is supported');
         }
         if (count($this->getMainValves()) > 2) {
             $errors[] = $this->Translate('A maximum of two main valves is supported');
@@ -879,18 +1038,22 @@ class IrrigationKNX extends IPSModule
         $definitions = [];
         foreach ($this->getMainValves() as $valve) {
             if (is_array($valve) && ($valve['Enabled'] ?? false)) {
+                $valve['Label'] = trim((string) ($valve['Name'] ?? '')) ?: $this->Translate('Main valve');
                 $definitions[] = $valve;
             }
         }
-        foreach ($this->getZones() as $zone) {
+        foreach ($this->getZones() as $index => $zone) {
             if (!is_array($zone) || !($zone['Enabled'] ?? false)) {
                 continue;
             }
+            $zoneName = trim((string) ($zone['Name'] ?? '')) ?: sprintf($this->Translate('Zone %d'), $index + 1);
+            $hasTwoValves = count($this->getValveIDs($zone)) > 1;
             for ($number = 1; $number <= 2; $number++) {
                 $definitions[] = [
                     'VariableID' => (int) ($zone['Valve' . $number . 'ID'] ?? 0),
                     'FeedbackID' => (int) ($zone['Feedback' . $number . 'ID'] ?? 0),
-                    'FeedbackInverted' => (bool) ($zone['Feedback' . $number . 'Inverted'] ?? false)
+                    'FeedbackInverted' => (bool) ($zone['Feedback' . $number . 'Inverted'] ?? false),
+                    'Label' => $hasTwoValves ? $zoneName . ' / ' . sprintf($this->Translate('Valve %d'), $number) : $zoneName
                 ];
             }
         }
@@ -917,14 +1080,79 @@ class IrrigationKNX extends IPSModule
 
     private function refreshOutputState(): void
     {
-        $states = $this->ReadPropertyBoolean('Simulation') ? $this->getSimulatedOutputs() : $this->getExpectedOutputs();
-        ksort($states, SORT_NUMERIC);
+        $simulation = $this->isSimulationContext();
+        $states = $simulation ? $this->getSimulatedOutputs() : $this->getExpectedOutputs();
+        $labels = [];
+        $order = [];
+        foreach ($this->getFeedbackDefinitions() as $definition) {
+            $id = (int) ($definition['VariableID'] ?? 0);
+            if ($id <= 0) {
+                continue;
+            }
+            $labels[(string) $id] = trim((string) ($definition['Label'] ?? '')) ?: sprintf($this->Translate('Variable %d'), $id);
+            $order[(string) $id] = count($order);
+        }
+        uksort($states, static function ($left, $right) use ($order): int {
+            return ($order[(string) $left] ?? PHP_INT_MAX) <=> ($order[(string) $right] ?? PHP_INT_MAX);
+        });
         $parts = [];
         foreach ($states as $id => $state) {
-            $parts[] = $id . '=' . ((bool) $state ? 'ON' : 'OFF');
+            $label = $labels[(string) $id] ?? sprintf($this->Translate('Variable %d'), (int) $id);
+            $parts[] = $label . '=' . ((bool) $state ? $this->Translate('ON') : $this->Translate('OFF'));
         }
-        $prefix = $this->ReadPropertyBoolean('Simulation') ? 'SIM: ' : '';
+        $prefix = $simulation ? 'SIM: ' : '';
         $this->writeValue('OutputState', $prefix . implode(', ', $parts));
+    }
+
+    private function zoneName(int $zoneNumber): string
+    {
+        $zone = $this->getZones()[$zoneNumber - 1] ?? null;
+        if (is_array($zone)) {
+            $name = trim((string) ($zone['Name'] ?? ''));
+            if ($name !== '') {
+                return $name;
+            }
+        }
+        return sprintf($this->Translate('Zone %d'), $zoneNumber);
+    }
+
+    private function updateZoneProfile(): void
+    {
+        $profile = 'IRRKNX.Zone.' . $this->InstanceID;
+        if (!IPS_VariableProfileExists($profile)) {
+            IPS_CreateVariableProfile($profile, 1);
+            IPS_SetVariableProfileIcon($profile, 'Drops');
+        }
+        IPS_SetVariableProfileAssociation($profile, 0, $this->Translate('Off / all'), '', -1);
+        for ($zone = 1; $zone <= self::MAX_ZONES; $zone++) {
+            IPS_SetVariableProfileAssociation($profile, $zone, $this->zoneName($zone), '', -1);
+        }
+        IPS_SetVariableCustomProfile($this->GetIDForIdent('ManualZone'), $profile);
+        IPS_SetVariableCustomProfile($this->GetIDForIdent('CurrentZone'), $profile);
+    }
+
+    private function defaultZonesJson(): string
+    {
+        $zones = [];
+        for ($zone = 1; $zone <= self::MAX_ZONES; $zone++) {
+            $zones[] = $this->defaultZone($zone);
+        }
+        return json_encode($zones) ?: '[]';
+    }
+
+    private function defaultZone(int $zone): array
+    {
+        return [
+            'Enabled' => false,
+            'Name' => 'Zone ' . $zone,
+            'Valve1ID' => 0,
+            'Valve2ID' => 0,
+            'Feedback1ID' => 0,
+            'Feedback2ID' => 0,
+            'Feedback1Inverted' => false,
+            'Feedback2Inverted' => false,
+            'RuntimeMinutes' => 10
+        ];
     }
 
     private function isRunning(): bool
@@ -979,21 +1207,22 @@ class IrrigationKNX extends IPSModule
         if (!IPS_VariableProfileExists('IRRKNX.State')) {
             IPS_CreateVariableProfile('IRRKNX.State', 1);
             IPS_SetVariableProfileIcon('IRRKNX.State', 'Drops');
-            IPS_SetVariableProfileAssociation('IRRKNX.State', self::STATE_IDLE, $this->Translate('Idle'), '', 0x43A047);
-            IPS_SetVariableProfileAssociation('IRRKNX.State', self::STATE_OPENING_MASTER, $this->Translate('Opening main valves'), '', 0xF9A825);
-            IPS_SetVariableProfileAssociation('IRRKNX.State', self::STATE_RUNNING, $this->Translate('Watering'), '', 0x2196F3);
-            IPS_SetVariableProfileAssociation('IRRKNX.State', self::STATE_INTER_ZONE, $this->Translate('Changing zone'), '', 0xF9A825);
-            IPS_SetVariableProfileAssociation('IRRKNX.State', self::STATE_BLOCKED, $this->Translate('Blocked'), '', 0xE67E22);
-            IPS_SetVariableProfileAssociation('IRRKNX.State', self::STATE_ERROR, $this->Translate('Error'), '', 0xD32F2F);
-            IPS_SetVariableProfileAssociation('IRRKNX.State', self::STATE_STOPPING, $this->Translate('Waiting for closed feedback'), '', 0xF9A825);
         }
+        IPS_SetVariableProfileAssociation('IRRKNX.State', self::STATE_IDLE, $this->Translate('Idle'), '', 0x43A047);
+        IPS_SetVariableProfileAssociation('IRRKNX.State', self::STATE_OPENING_MASTER, $this->Translate('Opening main valves'), '', 0xF9A825);
+        IPS_SetVariableProfileAssociation('IRRKNX.State', self::STATE_RUNNING, $this->Translate('Watering'), '', 0x2196F3);
+        IPS_SetVariableProfileAssociation('IRRKNX.State', self::STATE_INTER_ZONE, $this->Translate('Changing zone'), '', 0xF9A825);
+        IPS_SetVariableProfileAssociation('IRRKNX.State', self::STATE_BLOCKED, $this->Translate('Blocked'), '', 0xE67E22);
+        IPS_SetVariableProfileAssociation('IRRKNX.State', self::STATE_ERROR, $this->Translate('Error'), '', 0xD32F2F);
+        IPS_SetVariableProfileAssociation('IRRKNX.State', self::STATE_STOPPING, $this->Translate('Waiting for closed feedback'), '', 0xF9A825);
+        IPS_SetVariableProfileAssociation('IRRKNX.State', self::STATE_PAUSED, $this->Translate('Paused'), '', 0xF9A825);
         if (!IPS_VariableProfileExists('IRRKNX.Zone')) {
             IPS_CreateVariableProfile('IRRKNX.Zone', 1);
             IPS_SetVariableProfileIcon('IRRKNX.Zone', 'Drops');
-            IPS_SetVariableProfileAssociation('IRRKNX.Zone', 0, $this->Translate('Off / all'), '', -1);
-            for ($zone = 1; $zone <= self::MAX_ZONES; $zone++) {
-                IPS_SetVariableProfileAssociation('IRRKNX.Zone', $zone, sprintf($this->Translate('Zone %d'), $zone), '', -1);
-            }
+        }
+        IPS_SetVariableProfileAssociation('IRRKNX.Zone', 0, $this->Translate('Off / all'), '', -1);
+        for ($zone = 1; $zone <= self::MAX_ZONES; $zone++) {
+            IPS_SetVariableProfileAssociation('IRRKNX.Zone', $zone, sprintf($this->Translate('Zone %d'), $zone), '', -1);
         }
         if (!IPS_VariableProfileExists('IRRKNX.Minutes')) {
             IPS_CreateVariableProfile('IRRKNX.Minutes', 1);

@@ -19,7 +19,7 @@ class ModuleContractTest(unittest.TestCase):
             with self.subTest(path=path):
                 json.loads(path.read_text(encoding="utf-8"))
 
-    def test_form_defines_exactly_six_zone_rows_and_two_main_valves(self):
+    def test_form_defines_exactly_ten_zone_rows_and_two_main_valves(self):
         form = json.loads((ROOT / "IrrigationKNX" / "form.json").read_text(encoding="utf-8"))
         lists = {}
 
@@ -35,7 +35,11 @@ class ModuleContractTest(unittest.TestCase):
 
         visit(form)
         self.assertEqual(2, len(lists["MainValves"]["values"]))
-        self.assertEqual(6, len(lists["Zones"]["values"]))
+        self.assertEqual(10, len(lists["Zones"]["values"]))
+        self.assertEqual(10, lists["Zones"]["rowCount"])
+        for table in lists.values():
+            for column in table["columns"]:
+                self.assertRegex(column["width"], r"^\d+px$")
 
     def test_hardware_write_is_centralized_and_uses_request_action(self):
         source = MODULE.read_text(encoding="utf-8")

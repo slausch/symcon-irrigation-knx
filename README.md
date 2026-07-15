@@ -1,16 +1,17 @@
 # Irrigation KNX
 
-Eigenständiges IP-Symcon-Modul für eine sichere KNX-Bewässerungssteuerung. Es steuert bis zu zwei Hauptventile und sechs sequenziell laufende Zonen mit jeweils bis zu zwei Ventilen.
+Eigenständiges IP-Symcon-Modul für eine sichere KNX-Bewässerungssteuerung. Es steuert bis zu zwei Hauptventile und zehn sequenziell laufende Zonen mit jeweils bis zu zwei Ventilen.
 
 Das Modul wurde neu strukturiert. Die öffentliche Referenz [`elueckel/irrigation-control`](https://github.com/elueckel/irrigation-control) diente ausschließlich zur Ermittlung des Funktionsumfangs und für eine Fehleranalyse. Es wurde kein Quellcode übernommen.
 
 ## Funktionsumfang
 
 - bis zu zwei Hauptventile mit konfigurierbarem Vorlauf
-- bis zu sechs Zonen mit jeweils einem oder zwei Boolean-Ventilen
+- bis zu zehn Zonen mit jeweils einem oder zwei Boolean-Ventilen
 - sequenzieller Programmlauf; deaktivierte Zonen werden sicher übersprungen
 - Zeitplan nach Uhrzeit, Wochentagen und Tagesintervall mit festem Ankerdatum
 - manuelles Gesamtprogramm oder einzelne manuelle Zone
+- Pause mit geschlossenem Zonen- und Hauptventil sowie Fortsetzung der gespeicherten Restlaufzeit
 - Boolean-Regensensor und numerischer Bodenfeuchtesensor
 - optionale Boolean-Rückmeldung für jedes Haupt- und Zonenventil
 - Rückmelde-Timeout, maximale Gesamtlaufzeit und sofortiger Sensor-Stopp
@@ -52,6 +53,7 @@ Die Instanz legt folgende bedienbare Variablen an:
 - `ProgramActive`: Gesamtprogramm starten oder stoppen
 - `ManualZone`: einzelne Zone starten; `0` stoppt
 - `ManualRuntime`: Laufzeit der manuellen Einzelzone
+- `Pause`: aktuelle Zone und Hauptventile schließen; beim Ausschalten mit derselben Restlaufzeit fortsetzen
 - `EmergencyStop`: alle konfigurierten Ausgänge schließen
 
 Öffentliche Modulfunktionen:
@@ -59,6 +61,8 @@ Die Instanz legt folgende bedienbare Variablen an:
 ```php
 IRRKNX_StartProgram($InstanceID, true);
 IRRKNX_StartZone($InstanceID, 3, 15);
+IRRKNX_Pause($InstanceID);
+IRRKNX_Resume($InstanceID);
 IRRKNX_Stop($InstanceID);
 IRRKNX_EmergencyStop($InstanceID, 'Leckage erkannt');
 ```
@@ -89,7 +93,7 @@ Laufzeittests mit IP-Symcon-Stubs (benötigt PHP 8):
 php tests/run.php
 ```
 
-Die Tests decken insbesondere beide Hauptventil-IDs, das Überspringen deaktivierter Zonen, Sensorsperren, Rückmeldefehler und das Schließen sämtlicher Ausgänge ab.
+Die Tests decken insbesondere beide Hauptventil-IDs, das Überspringen deaktivierter Zonen, Pause/Fortsetzen, die Migration von sechs auf zehn Zonen, Sensorsperren, Rückmeldefehler und das Schließen sämtlicher Ausgänge ab.
 
 ## Dokumentation
 

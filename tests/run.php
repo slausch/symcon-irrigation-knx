@@ -157,6 +157,52 @@ $tests['shutdown waits for confirmed closed feedback'] = static function (): voi
     assertSameValue(5, GetValue($module->GetIDForIdent('State')), 'Missing closed feedback must report an error');
 };
 
+$tests['pause closes and resume continues the same remaining runtime'] = static function (): void {
+    $zoneValve = testCreateVariable(0, false);
+    $module = newModule([
+        'Enabled' => true,
+        'Simulation' => true,
+        'MasterLeadSeconds' => 0,
+        'Zones' => json_encode([zone(true, $zoneValve)])
+    ]);
+    assertSameValue(true, $module->StartProgram(true), 'Program should start');
+    $module->SetBuffer('PhaseDeadline', (string) (time() + 30));
+    assertSameValue(true, $module->Pause(), 'Active zone should pause');
+    assertSameValue('paused', $module->GetBuffer('Phase'), 'Phase should be paused');
+    assertSameValue(7, GetValue($module->GetIDForIdent('State')), 'State should show paused');
+    assertSameValue(30, GetValue($module->GetIDForIdent('RemainingSeconds')), 'Remaining runtime should be retained');
+    $states = json_decode($module->GetBuffer('SimulatedOutputs'), true);
+    assertSameValue(false, $states[(string) $zoneValve], 'Paused zone must close');
+    $module->Tick();
+    assertSameValue(30, GetValue($module->GetIDForIdent('RemainingSeconds')), 'Paused runtime must not count down');
+    assertSameValue(true, $module->Resume(), 'Paused zone should resume');
+    assertSameValue('running-zone', $module->GetBuffer('Phase'), 'Same zone should continue');
+    assertSameValue(1, GetValue($module->GetIDForIdent('CurrentZone')), 'Current zone should remain unchanged');
+    $states = json_decode($module->GetBuffer('SimulatedOutputs'), true);
+    assertSameValue(true, $states[(string) $zoneValve], 'Resumed zone must reopen');
+};
+
+$tests['migration preserves six configured zones and appends four disabled zones'] = static function (): void {
+    $module = new IrrigationKNX(99);
+    $module->Create();
+    $zones = [];
+    for ($number = 1; $number <= 6; $number++) {
+        $zones[] = zone($number <= 2, 100 + $number);
+        $zones[$number - 1]['Name'] = 'Existing ' . $number;
+    }
+    $persistence = json_encode([
+        'configuration' => ['Zones' => json_encode($zones)],
+        'attributes' => new stdClass()
+    ]);
+    $migrated = json_decode($module->Migrate($persistence), true);
+    $result = json_decode($migrated['configuration']['Zones'], true);
+    assertSameValue(10, count($result), 'Migration must provide ten zones');
+    assertSameValue('Existing 1', $result[0]['Name'], 'Existing names must be preserved');
+    assertSameValue(true, $result[0]['Enabled'], 'Existing activation must be preserved');
+    assertSameValue('Zone 7', $result[6]['Name'], 'Zone 7 should be appended');
+    assertSameValue(false, $result[6]['Enabled'], 'New zones must be disabled');
+};
+
 $failures = 0;
 foreach ($tests as $name => $test) {
     try {

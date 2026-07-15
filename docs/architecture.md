@@ -2,7 +2,7 @@
 
 ## Aufbau
 
-`Irrigation KNX` ist eine einzelne IP-Symcon-Geräteinstanz. Konfiguration, Laufzustand und Hardwarezugriff sind logisch getrennt:
+`Irrigation KNX` ist eine einzelne IP-Symcon-Geräteinstanz für bis zu zehn Zonen. Konfiguration, Laufzustand und Hardwarezugriff sind logisch getrennt:
 
 - Properties enthalten Ventile, Sensoren, Zeitplan und Grenzwerte.
 - Instanzvariablen bilden Bedienung und beobachtbaren Zustand ab.
@@ -27,9 +27,12 @@ Es läuft niemals mehr als eine Zone gleichzeitig. Lücken in der Konfiguration 
 - `running-zone`: genau eine Zone ist aktiv und besitzt eine Endzeit.
 - `inter-zone`: vorherige Zone ist geschlossen; Pause vor der nächsten Zone.
 - `stopping`: Aus-Befehle wurden gesendet; konfigurierte Rückmeldungen werden überwacht.
+- `paused`: aktuelle Zone und Hauptventile sind geschlossen; die Restlaufzeit ist eingefroren.
 - `idle`: kein Lauf aktiv.
 
 Ein bei `ApplyChanges()` vorgefundener aktiver Lauf wird nicht blind fortgesetzt. Stattdessen fordert das Modul den sicheren Aus-Zustand für alle bekannten und aktuell konfigurierten Ausgänge an.
+
+Beim Fortsetzen einer Pause werden zuerst die Hauptventile geöffnet. Nach dem konfigurierten Vorlauf öffnet dieselbe Zone erneut und läuft exakt mit der gespeicherten Restzeit weiter. Pausenzeit zählt nicht gegen die maximale Programmlaufzeit.
 
 ## Simulation
 

@@ -84,6 +84,11 @@ function IPS_SetVariableProfileText(string $name, string $prefix, string $suffix
 {
 }
 
+function IPS_SetVariableCustomProfile(int $id, string $profile): void
+{
+    $GLOBALS['IPS_TEST_VARIABLES'][$id]['profile'] = $profile;
+}
+
 class IPSModule
 {
     protected int $InstanceID;
@@ -104,6 +109,11 @@ class IPSModule
 
     public function ApplyChanges(): void
     {
+    }
+
+    public function Migrate($jsonData)
+    {
+        return '';
     }
 
     public function TestSetProperty(string $name, $value): void

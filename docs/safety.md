@@ -26,6 +26,8 @@ Eine Softwaresteuerung ersetzt keine hydraulische oder elektrische Sicherheit. F
 - echte Endlagen- oder Durchflussrückmeldung statt reiner Software-Spiegelwerte,
 - beaufsichtigter Test jeder Abschaltursache.
 
+Eine Pause schließt aus Sicherheitsgründen nicht nur die aktuelle Zone, sondern auch die Hauptventile beziehungsweise Pumpe. Vor dem Fortsetzen müssen konfigurierte Rückmeldungen den geschlossenen Zustand bestätigt haben.
+
 Wenn `RequestAction(false)` wegen Kommunikations- oder Aktorfehler nicht ausgeführt werden kann, kann das Modul den Wasserfluss nicht physisch garantieren. Der Fehler wird in `LastError` sichtbar gemacht.
 
 ## Sensorsemantik
