@@ -34,7 +34,7 @@ Analysiert wurde der öffentliche Stand `7af96dac3820d51a19e48e912884ba13c050072
 
 14. **Evapotranspirations-Timer ist nicht zuverlässig täglich.** Der Timer wird zunächst auf fünf Stunden gesetzt und danach auf die verbleibende Zeit bis 14:00 geändert. Da IP-Symcon-Timer Intervalle wiederholen und der Callback die nächste Tagesfrist nicht neu setzt, kann der anfängliche Abstand anschließend als Wiederholintervall wirken (Zeilen 218–228).
 
-## Konsequenzen in Irrigation KNX
+## Konsequenzen in Wangari Irrigation
 
 - Die Queue enthält nur aktivierte Zonen; sie verwendet keine fehleranfällige Fallunterscheidung pro Zonennummer.
 - Jedes Haupt- und Zonenventil behält seine eigene ID.

@@ -7,6 +7,12 @@ $GLOBALS['IPS_TEST_NEXT_ID'] = 1000;
 $GLOBALS['IPS_TEST_ACTIONS'] = [];
 $GLOBALS['IPS_TEST_PROFILES'] = [];
 
+define('VARIABLE_PRESENTATION_SWITCH', '{60AE6B26-B3E2-BDB1-A3A1-BE232940664B}');
+define('VARIABLE_PRESENTATION_ENUMERATION', '{52D9E126-D7D2-2CBB-5E62-4CF7BA7C5D82}');
+define('VARIABLE_PRESENTATION_VALUE_INPUT', '{6F477326-1683-A2FD-D2E7-477F366ECB62}');
+define('VARIABLE_PRESENTATION_VALUE_PRESENTATION', '{3319437D-7CDE-699D-750A-3C6A3841FA75}');
+define('KL_NOTIFY', 10203);
+
 function testCreateVariable(int $type, $value, bool $hasAction = true): int
 {
     $id = $GLOBALS['IPS_TEST_NEXT_ID']++;
@@ -171,28 +177,35 @@ class IPSModule
         $this->timers[$ident] = $interval;
     }
 
-    public function RegisterVariableBoolean(string $ident, string $name, string $profile = '', int $position = 0): void
+    public function RegisterVariableBoolean(string $ident, string $name, $presentation = '', int $position = 0): void
     {
-        $this->registerVariable($ident, 0, false);
+        $this->registerVariable($ident, 0, false, $name, $presentation, $position);
     }
 
-    public function RegisterVariableInteger(string $ident, string $name, string $profile = '', int $position = 0): void
+    public function RegisterVariableInteger(string $ident, string $name, $presentation = '', int $position = 0): void
     {
-        $this->registerVariable($ident, 1, 0);
+        $this->registerVariable($ident, 1, 0, $name, $presentation, $position);
     }
 
-    public function RegisterVariableString(string $ident, string $name, string $profile = '', int $position = 0): void
+    public function RegisterVariableString(string $ident, string $name, $presentation = '', int $position = 0): void
     {
-        $this->registerVariable($ident, 3, '');
+        $this->registerVariable($ident, 3, '', $name, $presentation, $position);
     }
 
-    private function registerVariable(string $ident, int $type, $value): void
+    private function registerVariable(string $ident, int $type, $value, string $name, $presentation, int $position): void
     {
         if (isset($this->variables[$ident])) {
+            $id = $this->variables[$ident];
+            $GLOBALS['IPS_TEST_VARIABLES'][$id]['name'] = $name;
+            $GLOBALS['IPS_TEST_VARIABLES'][$id]['presentation'] = $presentation;
+            $GLOBALS['IPS_TEST_VARIABLES'][$id]['position'] = $position;
             return;
         }
         $id = testCreateVariable($type, $value, false);
         $GLOBALS['IPS_TEST_VARIABLES'][$id]['ident'] = $ident;
+        $GLOBALS['IPS_TEST_VARIABLES'][$id]['name'] = $name;
+        $GLOBALS['IPS_TEST_VARIABLES'][$id]['presentation'] = $presentation;
+        $GLOBALS['IPS_TEST_VARIABLES'][$id]['position'] = $position;
         $this->variables[$ident] = $id;
     }
 
@@ -235,5 +248,10 @@ class IPSModule
 
     public function SendDebug(string $message, string $data, int $format): void
     {
+    }
+
+    public function LogMessage(string $message, int $type): bool
+    {
+        return true;
     }
 }

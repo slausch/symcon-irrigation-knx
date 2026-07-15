@@ -1,12 +1,12 @@
 {
   "id": "{CC602ACD-2B7C-46A5-97A5-E76D078A61B9}",
-  "author": "slausch",
-  "name": "Irrigation KNX",
+  "author": "Sepp Lausch",
+  "name": "Wangari Irrigation",
   "url": "https://github.com/slausch/symcon-irrigation-knx",
   "compatibility": {
-    "version": "7.0"
+    "version": "9.0"
   },
-  "version": "0.2",
-  "build": 3,
+  "version": "0.3",
+  "build": 5,
   "date": 0
 }

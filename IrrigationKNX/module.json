@@ -1,9 +1,10 @@
 {
   "id": "{EA07A4D2-C085-46AC-8901-6A5B52E34B90}",
-  "name": "Irrigation KNX",
+  "name": "Wangari Irrigation",
   "type": 3,
-  "vendor": "KNX",
+  "vendor": "Wangari",
   "aliases": [
+    "Wangari Irrigation",
     "Irrigation KNX"
   ],
   "parentRequirements": [],

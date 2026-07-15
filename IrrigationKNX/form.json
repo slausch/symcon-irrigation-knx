@@ -3,35 +3,45 @@
     {
       "type": "RowLayout",
       "items": [
+        { "type": "Button", "caption": "README", "onClick": "echo 'https://github.com/slausch/symcon-irrigation-knx#readme';", "link": true },
         { "type": "CheckBox", "name": "Enabled", "caption": "Module enabled" },
-        { "type": "CheckBox", "name": "Simulation", "caption": "Simulation (no hardware writes)" },
-        { "type": "NumberSpinner", "name": "SimulationRuntimeMinutes", "caption": "Test runtime (simulation only)", "minimum": 1, "maximum": 240, "suffix": " min" },
         { "type": "CheckBox", "name": "AutomaticDefault", "caption": "Automatic enabled initially" },
         { "type": "CheckBox", "name": "LogOperations", "caption": "Log operations" }
       ]
     },
     {
+      "type": "RowLayout",
+      "items": [
+        { "type": "CheckBox", "name": "Simulation", "caption": "Simulation (no hardware writes)" },
+        { "type": "NumberSpinner", "name": "SimulationRuntimeMinutes", "caption": "Test runtime (simulation only)", "minimum": 1, "maximum": 240, "suffix": " min" }
+      ]
+    },
+    { "type": "Label", "label": "Before first use, enable simulation and monitor state, current zone, remaining time and requested outputs in the object tree. At least one zone needs a name, an enabled automatic-program checkbox and one Boolean valve variable." },
+    { "type": "Label", "label": "Applying any configuration change safely stops a running irrigation program." },
+    {
       "type": "ExpansionPanel",
-      "caption": "Main valves",
+      "caption": "Pump and main valve",
       "expanded": true,
       "items": [
+        { "type": "Label", "label": "Both outputs are optional. The program also works with only a pump, only a main valve or neither, for example on a public water supply." },
+        { "type": "Label", "label": "Multiple instances are supported, but the same pump or valve output must not be controlled by more than one instance." },
         {
           "type": "List",
           "name": "MainValves",
-          "caption": "Up to two main valves; feedback is optional",
+          "caption": "Slot 1 is the irrigation pump, slot 2 is the main valve; feedback is optional",
           "rowCount": 2,
           "add": false,
           "delete": false,
           "columns": [
             { "caption": "Enabled", "name": "Enabled", "width": "70px", "add": false, "edit": { "type": "CheckBox" } },
             { "caption": "Name", "name": "Name", "width": "180px", "add": "", "edit": { "type": "ValidationTextBox" } },
-            { "caption": "Boolean valve variable", "name": "VariableID", "width": "380px", "add": 0, "edit": { "type": "SelectVariable", "validVariableTypes": [0], "requiredAction": 1 } },
+            { "caption": "Boolean output variable", "name": "VariableID", "width": "380px", "add": 0, "edit": { "type": "SelectVariable", "validVariableTypes": [0], "requiredAction": 1 } },
             { "caption": "Boolean feedback", "name": "FeedbackID", "width": "380px", "add": 0, "edit": { "type": "SelectVariable", "validVariableTypes": [0] } },
             { "caption": "Invert feedback", "name": "FeedbackInverted", "width": "120px", "add": false, "edit": { "type": "CheckBox" } }
           ],
           "values": [
-            { "Enabled": false, "Name": "Main valve 1", "VariableID": 0, "FeedbackID": 0, "FeedbackInverted": false },
-            { "Enabled": false, "Name": "Main valve 2", "VariableID": 0, "FeedbackID": 0, "FeedbackInverted": false }
+            { "Enabled": false, "Name": "Irrigation pump", "VariableID": 0, "FeedbackID": 0, "FeedbackInverted": false },
+            { "Enabled": false, "Name": "Main valve", "VariableID": 0, "FeedbackID": 0, "FeedbackInverted": false }
           ]
         }
       ]
@@ -41,6 +51,7 @@
       "caption": "Zones",
       "expanded": true,
       "items": [
+        { "type": "Label", "label": "Automatic program selects whether a zone participates in the complete program. Runtime and participation are also available as variables for scripts and visualizations." },
         {
           "type": "List",
           "name": "Zones",
@@ -49,7 +60,7 @@
           "add": false,
           "delete": false,
           "columns": [
-            { "caption": "Enabled", "name": "Enabled", "width": "65px", "add": false, "edit": { "type": "CheckBox" } },
+            { "caption": "Automatic program", "name": "Enabled", "width": "125px", "add": false, "edit": { "type": "CheckBox" } },
             { "caption": "Name", "name": "Name", "width": "140px", "add": "", "edit": { "type": "ValidationTextBox" } },
             { "caption": "Valve 1", "name": "Valve1ID", "width": "210px", "add": 0, "edit": { "type": "SelectVariable", "validVariableTypes": [0], "requiredAction": 1 } },
             { "caption": "Valve 2", "name": "Valve2ID", "width": "210px", "add": 0, "edit": { "type": "SelectVariable", "validVariableTypes": [0], "requiredAction": 1 } },
@@ -117,12 +128,23 @@
         {
           "type": "RowLayout",
           "items": [
-            { "type": "NumberSpinner", "name": "MasterLeadSeconds", "caption": "Main valve lead", "minimum": 0, "maximum": 300, "suffix": " s" },
-            { "type": "NumberSpinner", "name": "InterZoneSeconds", "caption": "Delay between zones", "minimum": 0, "maximum": 300, "suffix": " s" },
+            { "type": "NumberSpinner", "name": "PumpLeadSeconds", "caption": "Pump start delay", "minimum": 0, "maximum": 300, "suffix": " s" },
+            { "type": "NumberSpinner", "name": "InterZoneSeconds", "caption": "Zone and main-valve delay", "minimum": 0, "maximum": 300, "suffix": " s" },
             { "type": "NumberSpinner", "name": "FeedbackTimeoutSeconds", "caption": "Feedback timeout", "minimum": 1, "maximum": 300, "suffix": " s" },
             { "type": "NumberSpinner", "name": "MaximumProgramMinutes", "caption": "Maximum program runtime", "minimum": 1, "maximum": 1440, "suffix": " min" }
           ]
         }
+      ]
+    },
+    {
+      "type": "ExpansionPanel",
+      "caption": "Credit and license",
+      "items": [
+        { "type": "Label", "label": "This module is a small thank-you from Sepp Lausch for all the many modules I have happily used over the years." },
+        { "type": "Label", "label": "Here is my first module (complaints to Codex)." },
+        { "type": "Label", "label": "I may not be able to provide support or handle change requests; it is already a small miracle that I managed this. So far it has worked in several (KNX) installations." },
+        { "type": "Label", "label": "Sepp Lausch, Lausch SmarthomeCoach, Wangari Smart Integration LTD" },
+        { "type": "Label", "label": "License: Zero-Clause BSD (0BSD) – free use, modification and distribution without attribution requirement; provided without warranty." }
       ]
     }
   ],
@@ -133,6 +155,7 @@
       "items": [
         { "type": "Button", "caption": "Start program", "onClick": "IRRKNX_StartProgram($id, true);" },
         { "type": "Button", "caption": "Pause / Resume", "onClick": "IRRKNX_TogglePause($id);" },
+        { "type": "Button", "caption": "Skip current zone", "onClick": "IRRKNX_SkipCurrentZone($id);" },
         { "type": "Button", "caption": "Stop", "onClick": "IRRKNX_Stop($id);" },
         { "type": "Button", "caption": "Emergency stop", "confirm": "Close all configured valves now?", "onClick": "IRRKNX_EmergencyStop($id, 'Emergency stop from configuration form');" }
       ]
