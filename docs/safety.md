@@ -4,8 +4,8 @@
 
 Ein sicherer Stopp wird ausgelöst bei:
 
-- manuellem Stopp oder Not-Aus,
-- Regen oder erreichtem Bodenfeuchte-Grenzwert,
+- manuellem Stopp oder Sicherheitsstopp,
+- erreichtem Bodenfeuchte-Grenzwert,
 - fehlender oder falscher Ventilrückmeldung nach dem Timeout,
 - Überschreitung der maximalen Programmlaufzeit,
 - Modul-Deaktivierung,
@@ -34,6 +34,8 @@ Wenn `RequestAction(false)` wegen Kommunikations- oder Aktorfehler nicht ausgef�
 
 ## Sensorsemantik
 
-Der Regensensor ist Boolean; sein sperrender Wert ist konfigurierbar. Der Bodenfeuchtesensor ist Integer oder Float. Je nach Sensortyp kann „feucht“ ein hoher oder niedriger Wert sein, weshalb die Vergleichsrichtung konfigurierbar ist.
+Der Regensensor ist Boolean und gilt als aktiv, wenn sein Wert dem konfigurierten Aktivwert entspricht. Die Reaktion wird je Zone festgelegt: Markierte Zonen werden übersprungen; setzt Regen während einer markierten Zone ein, wird sie geschlossen und nach der Zonenwartezeit mit der nächsten nicht markierten Zone fortgefahren. Regen löst deshalb nicht mehr grundsätzlich einen Sicherheitsstopp des gesamten Programms aus.
+
+Der Bodenfeuchtesensor ist Integer oder Float. Ist „Bei/über Grenzwert sperren“ aktiv, sperrt `Messwert >= Grenzwert`; andernfalls sperrt `Messwert <= Grenzwert`. Je nach Sensortyp kann „feucht“ ein hoher oder niedriger Wert sein, weshalb diese Vergleichsrichtung konfigurierbar ist. Die Bodenfeuchte bleibt eine zentrale Sperre des gesamten Programms.
 
 Sensoren gelten für manuelle und automatische Starts. Ein Bediener kann einen Sensor nicht unbemerkt umgehen.

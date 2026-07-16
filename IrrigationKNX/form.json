@@ -33,11 +33,11 @@
           "add": false,
           "delete": false,
           "columns": [
-            { "caption": "Enabled", "name": "Enabled", "width": "70px", "add": false, "edit": { "type": "CheckBox" } },
-            { "caption": "Name", "name": "Name", "width": "180px", "add": "", "edit": { "type": "ValidationTextBox" } },
-            { "caption": "Boolean output variable", "name": "VariableID", "width": "380px", "add": 0, "edit": { "type": "SelectVariable", "validVariableTypes": [0], "requiredAction": 1 } },
-            { "caption": "Boolean feedback", "name": "FeedbackID", "width": "380px", "add": 0, "edit": { "type": "SelectVariable", "validVariableTypes": [0] } },
-            { "caption": "Invert feedback", "name": "FeedbackInverted", "width": "120px", "add": false, "edit": { "type": "CheckBox" } }
+            { "caption": "Enabled", "name": "Enabled", "width": "60px", "add": false, "edit": { "type": "CheckBox" } },
+            { "caption": "Name", "name": "Name", "width": "140px", "add": "", "edit": { "type": "ValidationTextBox" } },
+            { "caption": "Boolean output variable", "name": "VariableID", "width": "300px", "add": 0, "edit": { "type": "SelectVariable", "validVariableTypes": [0], "requiredAction": 1 } },
+            { "caption": "Boolean feedback", "name": "FeedbackID", "width": "300px", "add": 0, "edit": { "type": "SelectVariable", "validVariableTypes": [0] } },
+            { "caption": "Invert feedback", "name": "FeedbackInverted", "width": "105px", "add": false, "edit": { "type": "CheckBox" } }
           ],
           "values": [
             { "Enabled": false, "Name": "Irrigation pump", "VariableID": 0, "FeedbackID": 0, "FeedbackInverted": false },
@@ -60,27 +60,28 @@
           "add": false,
           "delete": false,
           "columns": [
-            { "caption": "Automatic program", "name": "Enabled", "width": "125px", "add": false, "edit": { "type": "CheckBox" } },
-            { "caption": "Name", "name": "Name", "width": "140px", "add": "", "edit": { "type": "ValidationTextBox" } },
-            { "caption": "Valve 1", "name": "Valve1ID", "width": "210px", "add": 0, "edit": { "type": "SelectVariable", "validVariableTypes": [0], "requiredAction": 1 } },
-            { "caption": "Valve 2", "name": "Valve2ID", "width": "210px", "add": 0, "edit": { "type": "SelectVariable", "validVariableTypes": [0], "requiredAction": 1 } },
-            { "caption": "Feedback 1", "name": "Feedback1ID", "width": "210px", "add": 0, "edit": { "type": "SelectVariable", "validVariableTypes": [0] } },
-            { "caption": "Feedback 2", "name": "Feedback2ID", "width": "210px", "add": 0, "edit": { "type": "SelectVariable", "validVariableTypes": [0] } },
-            { "caption": "Inv. FB 1", "name": "Feedback1Inverted", "width": "75px", "add": false, "edit": { "type": "CheckBox" } },
-            { "caption": "Inv. FB 2", "name": "Feedback2Inverted", "width": "75px", "add": false, "edit": { "type": "CheckBox" } },
-            { "caption": "Runtime", "name": "RuntimeMinutes", "width": "85px", "add": 10, "edit": { "type": "NumberSpinner", "minimum": 1, "maximum": 240, "suffix": " min" } }
+            { "caption": "Automatic program", "name": "Enabled", "width": "95px", "add": false, "edit": { "type": "CheckBox" } },
+            { "caption": "Name", "name": "Name", "width": "120px", "add": "", "edit": { "type": "ValidationTextBox" } },
+            { "caption": "Valve 1", "name": "Valve1ID", "width": "145px", "add": 0, "edit": { "type": "SelectVariable", "validVariableTypes": [0], "requiredAction": 1 } },
+            { "caption": "Valve 2", "name": "Valve2ID", "width": "135px", "add": 0, "edit": { "type": "SelectVariable", "validVariableTypes": [0], "requiredAction": 1 } },
+            { "caption": "Feedback 1", "name": "Feedback1ID", "width": "155px", "add": 0, "edit": { "type": "SelectVariable", "validVariableTypes": [0] } },
+            { "caption": "Feedback 2", "name": "Feedback2ID", "width": "135px", "add": 0, "edit": { "type": "SelectVariable", "validVariableTypes": [0] } },
+            { "caption": "Inv. FB 1", "name": "Feedback1Inverted", "width": "55px", "add": false, "edit": { "type": "CheckBox" } },
+            { "caption": "Inv. FB 2", "name": "Feedback2Inverted", "width": "55px", "add": false, "edit": { "type": "CheckBox" } },
+            { "caption": "Responds to rain", "name": "RainSensitive", "width": "65px", "add": true, "edit": { "type": "CheckBox" } },
+            { "caption": "Runtime", "name": "RuntimeMinutes", "width": "70px", "add": 10, "edit": { "type": "NumberSpinner", "minimum": 1, "maximum": 240, "suffix": " min" } }
           ],
           "values": [
-            { "Enabled": false, "Name": "Zone 1", "Valve1ID": 0, "Valve2ID": 0, "Feedback1ID": 0, "Feedback2ID": 0, "Feedback1Inverted": false, "Feedback2Inverted": false, "RuntimeMinutes": 10 },
-            { "Enabled": false, "Name": "Zone 2", "Valve1ID": 0, "Valve2ID": 0, "Feedback1ID": 0, "Feedback2ID": 0, "Feedback1Inverted": false, "Feedback2Inverted": false, "RuntimeMinutes": 10 },
-            { "Enabled": false, "Name": "Zone 3", "Valve1ID": 0, "Valve2ID": 0, "Feedback1ID": 0, "Feedback2ID": 0, "Feedback1Inverted": false, "Feedback2Inverted": false, "RuntimeMinutes": 10 },
-            { "Enabled": false, "Name": "Zone 4", "Valve1ID": 0, "Valve2ID": 0, "Feedback1ID": 0, "Feedback2ID": 0, "Feedback1Inverted": false, "Feedback2Inverted": false, "RuntimeMinutes": 10 },
-            { "Enabled": false, "Name": "Zone 5", "Valve1ID": 0, "Valve2ID": 0, "Feedback1ID": 0, "Feedback2ID": 0, "Feedback1Inverted": false, "Feedback2Inverted": false, "RuntimeMinutes": 10 },
-            { "Enabled": false, "Name": "Zone 6", "Valve1ID": 0, "Valve2ID": 0, "Feedback1ID": 0, "Feedback2ID": 0, "Feedback1Inverted": false, "Feedback2Inverted": false, "RuntimeMinutes": 10 },
-            { "Enabled": false, "Name": "Zone 7", "Valve1ID": 0, "Valve2ID": 0, "Feedback1ID": 0, "Feedback2ID": 0, "Feedback1Inverted": false, "Feedback2Inverted": false, "RuntimeMinutes": 10 },
-            { "Enabled": false, "Name": "Zone 8", "Valve1ID": 0, "Valve2ID": 0, "Feedback1ID": 0, "Feedback2ID": 0, "Feedback1Inverted": false, "Feedback2Inverted": false, "RuntimeMinutes": 10 },
-            { "Enabled": false, "Name": "Zone 9", "Valve1ID": 0, "Valve2ID": 0, "Feedback1ID": 0, "Feedback2ID": 0, "Feedback1Inverted": false, "Feedback2Inverted": false, "RuntimeMinutes": 10 },
-            { "Enabled": false, "Name": "Zone 10", "Valve1ID": 0, "Valve2ID": 0, "Feedback1ID": 0, "Feedback2ID": 0, "Feedback1Inverted": false, "Feedback2Inverted": false, "RuntimeMinutes": 10 }
+            { "Enabled": false, "Name": "Zone 1", "Valve1ID": 0, "Valve2ID": 0, "Feedback1ID": 0, "Feedback2ID": 0, "Feedback1Inverted": false, "Feedback2Inverted": false, "RainSensitive": true, "RuntimeMinutes": 10 },
+            { "Enabled": false, "Name": "Zone 2", "Valve1ID": 0, "Valve2ID": 0, "Feedback1ID": 0, "Feedback2ID": 0, "Feedback1Inverted": false, "Feedback2Inverted": false, "RainSensitive": true, "RuntimeMinutes": 10 },
+            { "Enabled": false, "Name": "Zone 3", "Valve1ID": 0, "Valve2ID": 0, "Feedback1ID": 0, "Feedback2ID": 0, "Feedback1Inverted": false, "Feedback2Inverted": false, "RainSensitive": true, "RuntimeMinutes": 10 },
+            { "Enabled": false, "Name": "Zone 4", "Valve1ID": 0, "Valve2ID": 0, "Feedback1ID": 0, "Feedback2ID": 0, "Feedback1Inverted": false, "Feedback2Inverted": false, "RainSensitive": true, "RuntimeMinutes": 10 },
+            { "Enabled": false, "Name": "Zone 5", "Valve1ID": 0, "Valve2ID": 0, "Feedback1ID": 0, "Feedback2ID": 0, "Feedback1Inverted": false, "Feedback2Inverted": false, "RainSensitive": true, "RuntimeMinutes": 10 },
+            { "Enabled": false, "Name": "Zone 6", "Valve1ID": 0, "Valve2ID": 0, "Feedback1ID": 0, "Feedback2ID": 0, "Feedback1Inverted": false, "Feedback2Inverted": false, "RainSensitive": true, "RuntimeMinutes": 10 },
+            { "Enabled": false, "Name": "Zone 7", "Valve1ID": 0, "Valve2ID": 0, "Feedback1ID": 0, "Feedback2ID": 0, "Feedback1Inverted": false, "Feedback2Inverted": false, "RainSensitive": true, "RuntimeMinutes": 10 },
+            { "Enabled": false, "Name": "Zone 8", "Valve1ID": 0, "Valve2ID": 0, "Feedback1ID": 0, "Feedback2ID": 0, "Feedback1Inverted": false, "Feedback2Inverted": false, "RainSensitive": true, "RuntimeMinutes": 10 },
+            { "Enabled": false, "Name": "Zone 9", "Valve1ID": 0, "Valve2ID": 0, "Feedback1ID": 0, "Feedback2ID": 0, "Feedback1Inverted": false, "Feedback2Inverted": false, "RainSensitive": true, "RuntimeMinutes": 10 },
+            { "Enabled": false, "Name": "Zone 10", "Valve1ID": 0, "Valve2ID": 0, "Feedback1ID": 0, "Feedback2ID": 0, "Feedback1Inverted": false, "Feedback2Inverted": false, "RainSensitive": true, "RuntimeMinutes": 10 }
           ]
         }
       ]
@@ -97,6 +98,7 @@
             { "type": "ValidationTextBox", "name": "IntervalAnchor", "caption": "Anchor date (YYYY-MM-DD)" }
           ]
         },
+        { "type": "Label", "label": "Interval days are calculated from the anchor date. If an interval day falls on a disabled weekday, that run is postponed to the next enabled weekday. At most one automatic run starts per calendar day." },
         {
           "type": "RowLayout",
           "items": [
@@ -125,6 +127,8 @@
             { "type": "CheckBox", "name": "SoilBlocksAboveLimit", "caption": "Block at/above limit" }
           ]
         },
+        { "type": "Label", "label": "The rain sensor is active when its Boolean value equals Rain active value. Only zones with Responds to rain enabled are skipped. If such a zone is running when rain starts, it closes and the next unaffected zone starts after the configured zone delay." },
+        { "type": "Label", "label": "Soil moisture is numeric. With Block at/above limit enabled, values greater than or equal to the limit block watering; when disabled, values less than or equal to the limit block it. Soil moisture remains a central block and safely stops the complete program." },
         {
           "type": "RowLayout",
           "items": [
@@ -149,15 +153,15 @@
     }
   ],
   "actions": [
-    { "type": "Label", "label": "Use simulation for initial commissioning. Emergency stop closes every configured output." },
+    { "type": "Label", "label": "Use simulation for initial commissioning. Safety stop closes every configured output and records a fault." },
     {
       "type": "RowLayout",
       "items": [
         { "type": "Button", "caption": "Start program", "onClick": "IRRKNX_StartProgram($id, true);" },
         { "type": "Button", "caption": "Pause / Resume", "onClick": "IRRKNX_TogglePause($id);" },
         { "type": "Button", "caption": "Skip current zone", "onClick": "IRRKNX_SkipCurrentZone($id);" },
-        { "type": "Button", "caption": "Stop", "onClick": "IRRKNX_Stop($id);" },
-        { "type": "Button", "caption": "Emergency stop", "confirm": "Close all configured valves now?", "onClick": "IRRKNX_EmergencyStop($id, 'Emergency stop from configuration form');" }
+        { "type": "Button", "caption": "Stop", "confirm": "Stop the irrigation program? A stopped program cannot be resumed.", "onClick": "IRRKNX_Stop($id);" },
+        { "type": "Button", "caption": "Safety stop", "confirm": "Close all configured outputs and record a safety fault now?", "onClick": "IRRKNX_EmergencyStop($id);" }
       ]
     }
   ],

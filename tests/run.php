@@ -24,7 +24,7 @@ function newModule(array $properties): WangariIrrigation
     return $module;
 }
 
-function zone(bool $enabled, int $valve1, int $valve2 = 0, int $feedback1 = 0): array
+function zone(bool $enabled, int $valve1, int $valve2 = 0, int $feedback1 = 0, bool $rainSensitive = true): array
 {
     return [
         'Enabled' => $enabled,
@@ -35,6 +35,7 @@ function zone(bool $enabled, int $valve1, int $valve2 = 0, int $feedback1 = 0): 
         'Feedback2ID' => 0,
         'Feedback1Inverted' => false,
         'Feedback2Inverted' => false,
+        'RainSensitive' => $rainSensitive,
         'RuntimeMinutes' => 1
     ];
 }
@@ -42,6 +43,13 @@ function zone(bool $enabled, int $valve1, int $valve2 = 0, int $feedback1 = 0): 
 function forceDeadline(WangariIrrigation $module): void
 {
     $module->SetBuffer('PhaseDeadline', (string) (time() - 1));
+}
+
+function isScheduledFor(WangariIrrigation $module, string $date): bool
+{
+    $method = new ReflectionMethod(WangariIrrigation::class, 'isScheduledDate');
+    $method->setAccessible(true);
+    return (bool) $method->invoke($module, new DateTimeImmutable($date));
 }
 
 $tests = [];
@@ -239,6 +247,123 @@ $tests['rain blocks manual and automatic starts'] = static function (): void {
     assertSameValue(true, GetValue($module->GetIDForIdent('SensorBlocked')), 'Sensor block must be visible');
 };
 
+$tests['schedule catches a disabled interval day up on the next enabled weekday'] = static function (): void {
+    $weekdayModule = newModule([
+        'IntervalDays' => 1,
+        'IntervalAnchor' => '2026-01-01',
+        'Monday' => true,
+        'Tuesday' => false,
+        'Wednesday' => true,
+        'Thursday' => false,
+        'Friday' => true,
+        'Saturday' => false,
+        'Sunday' => false
+    ]);
+    assertSameValue(true, isScheduledFor($weekdayModule, '2026-01-05'), 'Monday should be allowed with interval one');
+    assertSameValue(false, isScheduledFor($weekdayModule, '2026-01-06'), 'Disabled Tuesday must be rejected');
+
+    $intervalModule = newModule([
+        'IntervalDays' => 3,
+        'IntervalAnchor' => '2026-01-01',
+        'Sunday' => false
+    ]);
+    assertSameValue(true, isScheduledFor($intervalModule, '2026-01-01'), 'Anchor date is an interval day');
+    assertSameValue(false, isScheduledFor($intervalModule, '2026-01-04'), 'Disabled Sunday interval day must be skipped');
+    assertSameValue(true, isScheduledFor($intervalModule, '2026-01-05'), 'Skipped Sunday interval must catch up on Monday');
+    assertSameValue(false, isScheduledFor($intervalModule, '2026-01-06'), 'Catch-up must run only once');
+    assertSameValue(true, isScheduledFor($intervalModule, '2026-01-07'), 'Next regular interval day should run');
+};
+
+$tests['rain skips only rain-sensitive zones and advances a running program'] = static function (): void {
+    $rain = testCreateVariable(0, false, false);
+    $sensitiveValve = testCreateVariable(0, false);
+    $unaffectedValve = testCreateVariable(0, false);
+    $laterSensitiveValve = testCreateVariable(0, false);
+    $module = newModule([
+        'Enabled' => true,
+        'Simulation' => true,
+        'InterZoneSeconds' => 0,
+        'RainSensorID' => $rain,
+        'RainActiveValue' => true,
+        'Zones' => json_encode([
+            zone(true, $sensitiveValve, 0, 0, true),
+            zone(true, $unaffectedValve, 0, 0, false),
+            zone(true, $laterSensitiveValve, 0, 0, true)
+        ])
+    ]);
+
+    assertSameValue(true, $module->StartProgram(true), 'Program should start before rain');
+    SetValue($rain, true);
+    $module->Tick();
+    assertSameValue('inter-zone', $module->GetBuffer('Phase'), 'Rain-sensitive running zone must close and enter the zone delay');
+    forceDeadline($module);
+    $module->Tick();
+    assertSameValue(2, GetValue($module->GetIDForIdent('CurrentZone')), 'Next unaffected zone must start');
+    assertSameValue(true, GetValue($module->GetIDForIdent('ProgramActive')), 'Program must continue for unaffected zones');
+    assertSameValue(true, GetValue($module->GetIDForIdent('SensorBlocked')), 'Active rain sensor must remain visible');
+
+    forceDeadline($module);
+    $module->Tick();
+    forceDeadline($module);
+    $module->Tick();
+    assertSameValue(false, GetValue($module->GetIDForIdent('ProgramActive')), 'Program must end when only rain-sensitive zones remain');
+
+    $secondModule = newModule([
+        'Enabled' => true,
+        'Simulation' => true,
+        'RainSensorID' => $rain,
+        'RainActiveValue' => true,
+        'Zones' => json_encode([
+            zone(true, $sensitiveValve, 0, 0, true),
+            zone(true, $unaffectedValve, 0, 0, false)
+        ])
+    ]);
+    assertSameValue(true, $secondModule->StartProgram(true), 'Rain must still allow a program with an unaffected zone');
+    assertSameValue(2, GetValue($secondModule->GetIDForIdent('CurrentZone')), 'Start queue must omit rain-sensitive zones');
+};
+
+$tests['soil moisture supports both comparison directions'] = static function (): void {
+    $soil = testCreateVariable(2, 70.0, false);
+    $zoneValve = testCreateVariable(0, false);
+    $blocking = newModule([
+        'Enabled' => true,
+        'Simulation' => true,
+        'SoilMoistureSensorID' => $soil,
+        'SoilMoistureLimit' => 60.0,
+        'SoilBlocksAboveLimit' => true,
+        'Zones' => json_encode([zone(true, $zoneValve)])
+    ]);
+    assertSameValue(false, $blocking->StartProgram(true), 'Value above limit should block in above mode');
+
+    $notBlocking = newModule([
+        'Enabled' => true,
+        'Simulation' => true,
+        'SoilMoistureSensorID' => $soil,
+        'SoilMoistureLimit' => 60.0,
+        'SoilBlocksAboveLimit' => false,
+        'Zones' => json_encode([zone(true, $zoneValve)])
+    ]);
+    assertSameValue(true, $notBlocking->StartProgram(true), 'Value above limit should not block in below mode');
+    $notBlocking->Stop();
+};
+
+$tests['regular stop is ready while safety stop records an error'] = static function (): void {
+    $zoneValve = testCreateVariable(0, false);
+    $module = newModule([
+        'Enabled' => true,
+        'Simulation' => true,
+        'Zones' => json_encode([zone(true, $zoneValve)])
+    ]);
+    assertSameValue(true, $module->StartProgram(true), 'Program should start for regular stop');
+    $module->Stop();
+    assertSameValue(0, GetValue($module->GetIDForIdent('State')), 'Regular stop should return to ready');
+    assertSameValue('', GetValue($module->GetIDForIdent('LastError')), 'Regular stop should not create a new error');
+    assertSameValue(true, $module->StartProgram(false), 'False marks an automatic source but must still start');
+    $module->EmergencyStop('Leak detected');
+    assertSameValue(5, GetValue($module->GetIDForIdent('State')), 'Safety stop should set error state');
+    assertSameValue('Leak detected', GetValue($module->GetIDForIdent('LastError')), 'Safety stop should record its reason');
+};
+
 $tests['feedback mismatch causes safe shutdown'] = static function (): void {
     $GLOBALS['IPS_TEST_ACTIONS'] = [];
     $zoneValve = testCreateVariable(0, false);
@@ -326,6 +451,7 @@ $tests['migration preserves six configured zones and appends four disabled zones
     for ($number = 1; $number <= 6; $number++) {
         $zones[] = zone($number <= 2, 100 + $number);
         $zones[$number - 1]['Name'] = 'Existing ' . $number;
+        unset($zones[$number - 1]['RainSensitive']);
     }
     $persistence = json_encode([
         'configuration' => ['Zones' => json_encode($zones)],
@@ -338,6 +464,7 @@ $tests['migration preserves six configured zones and appends four disabled zones
     assertSameValue(true, $result[0]['Enabled'], 'Existing activation must be preserved');
     assertSameValue('Zone 7', $result[6]['Name'], 'Zone 7 should be appended');
     assertSameValue(false, $result[6]['Enabled'], 'New zones must be disabled');
+    assertSameValue(true, $result[0]['RainSensitive'], 'Existing zones must preserve the former global rain behavior');
     assertSameValue(5, $migrated['configuration']['PumpLeadSeconds'], 'Pump delay should be added without changing existing settings');
     assertSameValue(1, $migrated['configuration']['SimulationRuntimeMinutes'], 'Simulation runtime should receive its safe default');
 };

@@ -37,13 +37,19 @@ class ModuleContractTest(unittest.TestCase):
         self.assertEqual(2, len(lists["MainValves"]["values"]))
         self.assertEqual(10, len(lists["Zones"]["values"]))
         self.assertEqual(10, lists["Zones"]["rowCount"])
+        self.assertIn("RainSensitive", [column["name"] for column in lists["Zones"]["columns"]])
+        self.assertTrue(all(row["RainSensitive"] for row in lists["Zones"]["values"]))
         for table in lists.values():
             for column in table["columns"]:
                 self.assertRegex(column["width"], r"^\d+px$")
+        self.assertLessEqual(sum(int(column["width"][:-2]) for column in lists["MainValves"]["columns"]), 950)
+        self.assertLessEqual(sum(int(column["width"][:-2]) for column in lists["Zones"]["columns"]), 1100)
 
         actions = form["actions"][1]["items"]
         self.assertTrue(any(item.get("caption") == "Pause / Resume" for item in actions))
         self.assertTrue(any(item.get("caption") == "Skip current zone" for item in actions))
+        self.assertTrue(any(item.get("caption") == "Safety stop" for item in actions))
+        self.assertFalse(any(item.get("caption") == "Emergency stop" for item in actions))
 
         header = form["elements"][0]["items"]
         simulation_row = form["elements"][1]["items"]
@@ -81,7 +87,8 @@ class ModuleContractTest(unittest.TestCase):
         for marker in [
             "maximum program runtime exceeded",
             "valve feedback mismatch",
-            "rain or soil moisture limit reached",
+            "soil moisture limit reached",
+            "skipCurrentZoneDueToRain",
             "Every configured zone is closed",
             "Recovered interrupted run",
             "one or more valves did not confirm the closed state",

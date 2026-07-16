@@ -47,7 +47,7 @@ Empfohlene Erstinbetriebnahme:
 1. Instanz anlegen und `Simulation` aktiviert lassen. Die `Testlaufzeit (nur Simulation)` steht standardmäßig auf 1 Minute je Zone.
 2. Mindestens eine Zone benennen, für das Automatikprogramm aktivieren und mindestens eine schaltbare Boolean-Ventilvariable auswählen. Pumpe und Hauptventil sind optional.
 3. Laufzeiten, Sensoren, Rückmeldungen und Sicherheitszeiten konfigurieren.
-4. In der Simulation Gesamtprogramm, Einzelzonen, Regenstopp und Rückmeldefehler prüfen.
+4. In der Simulation Gesamtprogramm, Einzelzonen, zonenweise Regenreaktion und Rückmeldefehler prüfen.
 5. Erst danach Simulation deaktivieren und jede Zone unter Aufsicht kurz testen.
 6. Automatik erst nach erfolgreichem Hardwaretest einschalten.
 
@@ -66,7 +66,7 @@ Die Instanz legt folgende bedienbare Variablen an:
 - `Zone1Automatic` bis `Zone10Automatic`: Teilnahme der Zone am Gesamtprogramm
 - `Zone1Runtime` bis `Zone10Runtime`: Laufzeit der Zone in Minuten
 - `Zone1Progress` bis `Zone10Progress`: Fortschritt der aktiven Zone; der sichtbare Variablenname entspricht dem konfigurierten Zonennamen
-- `EmergencyStop`: alle konfigurierten Ausgänge schließen
+- `EmergencyStop`: sichtbarer Sicherheitsstopp; schließt alle konfigurierten Ausgänge und setzt einen Fehlerstatus. Der interne Ident bleibt aus Kompatibilitätsgründen unverändert.
 
 Öffentliche Modulfunktionen:
 
@@ -84,6 +84,15 @@ IRRKNX_EmergencyStop($InstanceID, 'Leckage erkannt');
 ```
 
 Manuelle Starts beachten standardmäßig ebenfalls Regen und Bodenfeuchte. Es gibt bewusst keinen stillen Sensor-Override.
+
+Wichtig zur Bedienlogik:
+
+- `IRRKNX_StartProgram($InstanceID, true)` startet manuell. Der Wert `false` startet ebenfalls, kennzeichnet den Lauf aber als automatischen Zeitplanstart; er bedeutet nicht „Aus“.
+- `IRRKNX_Stop($InstanceID)` beendet den Lauf regulär und endgültig. Ein neuer Start beginnt wieder bei der ersten teilnehmenden Zone.
+- `IRRKNX_Pause($InstanceID)` pausiert immer, `IRRKNX_Resume($InstanceID)` setzt immer fort und `IRRKNX_TogglePause($InstanceID)` wählt abhängig vom aktuellen Zustand zwischen beiden Aktionen.
+- Die interne Variable `Pause` kann mit `RequestAction($PauseVariableID, true)` pausiert und mit `RequestAction($PauseVariableID, false)` fortgesetzt werden. Die Modulfunktionen `Pause()`, `Resume()` und `TogglePause()` erhalten keinen Boolean-Parameter.
+- `IRRKNX_EmergencyStop()` heißt aus Kompatibilitätsgründen weiterhin so, wird in der Oberfläche aber als Sicherheitsstopp bezeichnet. Er beendet endgültig, setzt den Status auf Fehler und schreibt den angegebenen Grund in `LastError`.
+- Stop und Sicherheitsstopp sind absichtlich nicht fortsetzbar. Für eine später fortzusetzende Unterbrechung ist ausschließlich Pause vorgesehen.
 
 Dieselben Werte lassen sich über die internen Variablen mit `RequestAction` setzen:
 
@@ -116,11 +125,30 @@ Während eine Zone läuft, enthält nur deren Fortschrittsvariable einen Text. Z
 - `seit 7 Min, noch 53 Min`
 - `seit 59 Min, noch 13 Sek`
 
-Während einer Pause bleibt der Text eingefroren. Bei Überspringen, Zonenwechsel, Stopp, Not-Aus oder Programmende wird die Anzeige der bisherigen Zone geleert.
+Während einer Pause bleibt der Text eingefroren. Bei Überspringen, Zonenwechsel, Stopp, Sicherheitsstopp oder Programmende wird die Anzeige der bisherigen Zone geleert.
 
 ## Zeitsteuerung
 
-`StartTime` verwendet `HH:MM`. Der Zeitplan läuft nur an aktivierten Wochentagen. `IntervalDays` wird gegen `IntervalAnchor` (`YYYY-MM-DD`) berechnet. Damit wandert der Termin nicht bei jedem Timerlauf weiter. Pro Kalendertag wird höchstens ein automatischer Start ausgelöst.
+`StartTime` verwendet `HH:MM`. `IntervalDays` wird in Kalendertagen gegen `IntervalAnchor` (`YYYY-MM-DD`) berechnet; ein Ankerdatum wie `2026-01-01` ist zulässig. Zusätzlich muss der errechnete Tag als Wochentag aktiviert sein. Beide Bedingungen sind UND-verknüpft:
+
+- Intervall `1` und Montag/Mittwoch/Freitag: Bewässerung nur an diesen drei Wochentagen.
+- Intervall `3` und alle Wochentage: alle drei Kalendertage ab dem Ankerdatum.
+- Trifft ein Intervalltag auf einen deaktivierten Wochentag, wird dieser Lauf am nächsten aktivierten Wochentag nachgeholt.
+- Ein Nachhollauf verschiebt die folgenden regulären Intervalltage nicht. Treffen mehrere fällige Läufe auf denselben erlaubten Tag, startet an diesem Kalendertag höchstens ein Programm.
+
+Damit wandert der Termin nicht bei jedem Timerlauf weiter. Pro Kalendertag wird höchstens ein automatischer Start ausgelöst.
+
+## Regen- und Bodenfeuchtesensor
+
+Der optionale Regensensor muss Boolean sein. Er ist genau dann aktiv, wenn sein Wert dem konfigurierten `RainActiveValue` entspricht. Bei einem Sensor, der Regen mit `true` meldet, wird der Aktivwert eingeschaltet. Bei einem invertierten Kontakt, der Regen mit `false` meldet, wird er ausgeschaltet.
+
+In der Zonentabelle bestimmt `Reagiert auf Regen` die Wirkung je Zone. Bei aktivem Regen werden nur entsprechend markierte Zonen übersprungen. Nicht markierte Zonen können weiterhin bewässern. Setzt Regen während einer markierten laufenden Zone ein, wird ihr Ventil geschlossen; nach der eingestellten Wartezeit Zone läuft das Programm mit der nächsten nicht markierten Zone weiter. Gibt es keine solche Zone mehr, endet das Programm regulär. Bereits wegen Regen übersprungene Zonen werden in diesem Programmlauf nicht nachgeholt.
+
+Die Statusvariable `Sensor aktiv / Sperre` zeigt weiterhin an, dass Regen oder die Bodenfeuchtegrenze aktiv ist. Bei Regen kann das Programm trotzdem mit nicht markierten Zonen weiterlaufen.
+
+Die optionale Bodenfeuchte muss Integer oder Float sein. Ist `SoilBlocksAboveLimit` aktiv, sperrt ein Messwert größer oder gleich `SoilMoistureLimit`. Ist die Option aus, sperrt ein Wert kleiner oder gleich dem Grenzwert. So werden sowohl Sensoren unterstützt, bei denen hohe Werte „feucht“ bedeuten, als auch Sensoren mit umgekehrter Skala.
+
+Beide Sensoren werden vor manuellen und automatischen Starts sowie während eines laufenden Programms geprüft. Bodenfeuchte bleibt eine zentrale Sperre und löst während eines Laufs einen Sicherheitsstopp des gesamten Programms aus. Regen wirkt dagegen ausschließlich auf die je Zone markierte Auswahl.
 
 ## Rückmeldungen
 
