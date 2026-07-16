@@ -38,9 +38,8 @@ Der Aufruf ist in `switchOutput()` zentralisiert. Direkte KNX-, Homematic- oder 
 
 ## Installation und privater Test
 
-Das Repository bleibt für den Testbetrieb privat. Zugangsdaten oder GitHub-Tokens gehören nicht in die Repository-URL und nicht in die Modulkonfiguration. Für einen lokalen Test kann das Repository auf dem IP-Symcon-System in das Modulverzeichnis ausgecheckt und von dort geladen werden. Alternativ wird ein auf dem Testsystem sicher hinterlegter Lesezugang für das private Repository benötigt.
-
-Nach dem Laden erscheint das Gerät unter dem Namen **Wangari Irrigation**. Die frühere Bezeichnung **Irrigation KNX** bleibt als Alias erhalten. Die Modul-GUID und alle internen Idents bleiben unverändert, damit bestehende Instanzen ihre Konfiguration behalten.
+Das Repository bleibt für den Testbetrieb privat.
+Nach dem Laden erscheint das Gerät unter dem Namen **Wangari Irrigation**. Die frühere Bezeichnung **Irrigation KNX** bleibt als Alias erhalten.
 
 Empfohlene Erstinbetriebnahme:
 
