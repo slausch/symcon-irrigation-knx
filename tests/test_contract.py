@@ -39,8 +39,12 @@ class ModuleContractTest(unittest.TestCase):
         self.assertEqual(10, lists["Zones"]["rowCount"])
         self.assertIn("RainSensitive", [column["name"] for column in lists["Zones"]["columns"]])
         self.assertIn("Group", [column["name"] for column in lists["Zones"]["columns"]])
+        group_column = next(column for column in lists["Zones"]["columns"] if column["name"] == "Group")
+        self.assertEqual(0, group_column["add"])
+        self.assertEqual(0, group_column["edit"]["minimum"])
+        self.assertEqual(100, group_column["edit"]["maximum"])
         self.assertTrue(all(row["RainSensitive"] for row in lists["Zones"]["values"]))
-        self.assertEqual(list(range(1, 11)), [row["Group"] for row in lists["Zones"]["values"]])
+        self.assertEqual([0] * 10, [row["Group"] for row in lists["Zones"]["values"]])
         for table in lists.values():
             for column in table["columns"]:
                 self.assertRegex(column["width"], r"^\d+px$")

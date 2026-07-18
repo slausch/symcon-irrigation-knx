@@ -11,7 +11,8 @@ Das Modul wurde neu strukturiert. Die öffentliche Referenz [`elueckel/irrigatio
 - gemeinsame Wartezeit für Hauptventil und Zonenwechsel (Standard: 2 Sekunden)
 - bis zu zehn Zonen mit jeweils einem oder zwei Boolean-Ventilen
 - wählbare Bewässerungsart: keine Bewässerung, Zonen einzeln oder Zonen gleicher Gruppennummer gemeinsam
-- Gruppen 1 bis 100; Ausführung aufsteigend ab der niedrigsten vorhandenen Gruppe
+- Gruppe `0` bedeutet „keine Gruppe“ und läuft einzeln; Gruppen `1–100` verbinden gleiche Nummern
+- Ausführung in der Reihenfolge der Zonentabelle; eine Gruppe läuft gemeinsam, sobald sie dort erstmals auftritt
 - Zeitplan nach Uhrzeit, Wochentagen und Tagesintervall mit festem Ankerdatum
 - manuelles Gesamtprogramm oder einzelne manuelle Zone
 - Pause mit geschlossenem Zonen- und Hauptventil sowie Fortsetzung der gespeicherten Restlaufzeit
@@ -89,7 +90,11 @@ Manuelle Starts beachten standardmäßig ebenfalls Regen und Bodenfeuchte. Es gi
 
 Der Status nennt während der Vorbereitung und des Zonenwechsels die nächste Zone, während der Bewässerung die aktive Zone und während einer Pause die pausierte Zone. Mehrfaches Überspringen während derselben Pumpen- oder Zonenwartezeit verlängert diese Wartezeit nicht.
 
-Im Gruppenmodus werden alle teilnehmenden Zonen nach ihrer konfigurierten Gruppennummer von 1 bis 100 zusammengefasst. Die niedrigste vorhandene Gruppe startet zuerst. Werte über 100 werden mit sichtbarer Warnung intern auf 100 begrenzt. Alle Zonen eines Gruppenschritts öffnen gemeinsam, behalten jedoch ihre jeweilige Zonenlaufzeit und schließen daher gegebenenfalls zu unterschiedlichen Zeiten. Erst wenn die letzte Zone der Gruppe beendet ist, folgt die Zonenwartezeit vor der nächsten Gruppe. Pause und Überspringen wirken auf den vollständigen aktuellen Gruppenschritt; bei Regen schließen innerhalb einer gemischten Gruppe nur die als regenempfindlich markierten Zonen.
+Im Gruppenmodus bedeutet Gruppennummer `0`, dass die Zone keiner Gruppe angehört und einzeln läuft. Das ist der Standard für neue und bisher nicht gruppierte Zonen. Gleiche Gruppennummern von `1` bis `100` werden zu einem gemeinsamen Bewässerungsschritt verbunden. Die Ausführung folgt der Reihenfolge der Zonentabelle: Beim ersten Auftreten einer Gruppennummer laufen alle teilnehmenden Zonen dieser Gruppe gemeinsam; spätere Zeilen derselben Gruppe werden nicht nochmals ausgeführt. Werte über 100 werden mit sichtbarer Warnung intern auf 100 begrenzt, negative Werte entsprechend auf 0. Alle Zonen eines Gruppenschritts behalten ihre jeweilige Zonenlaufzeit und schließen daher gegebenenfalls zu unterschiedlichen Zeiten. Erst wenn die letzte Zone der Gruppe beendet ist, folgt die Zonenwartezeit vor dem nächsten Schritt. Pause und Überspringen wirken auf den vollständigen aktuellen Gruppenschritt; bei Regen schließen innerhalb einer gemischten Gruppe nur die als regenempfindlich markierten Zonen.
+
+Bereits gespeicherte Gruppennummern bleiben bei einem Update erhalten. Wer Build 9 schon verwendet hat und dessen automatisch vorbelegte Werte `1–10` nicht als echte Gruppen benötigt, setzt diese Zonen einmalig auf `0`.
+
+Beispiel: Haben die Zonen in Tabellenreihenfolge die Gruppen `0, 2, 2, 0`, läuft zuerst die erste Zone einzeln, danach Gruppe 2 gemeinsam und anschließend die letzte Zone einzeln.
 
 Nach der letzten noch vorhandenen Zone wird immer der vollständige Abschaltpfad ausgeführt: alle Zonenventile schließen, anschließend Pumpe stoppen und das optionale Hauptventil schließen. Das gilt gleichermaßen für Gesamtprogramme und über `Manuelle Zone` beziehungsweise `IRRKNX_StartZone()` gestartete Einzelzonen. Direkte Fremdschaltungen einer konfigurierten Ventilvariable außerhalb dieser Modulbedienung sind kein Modullauf und werden deshalb nicht als manuelle Zone überwacht.
 

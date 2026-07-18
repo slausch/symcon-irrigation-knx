@@ -19,7 +19,7 @@
 6. Wenn keine Zone des Schritts mehr läuft, startet nach der Zwischenpause der nächste Schritt.
 7. Nach der letzten Zone werden zunächst alle Zonen und anschließend Pumpe und Hauptventil geschlossen. Das gilt auch für eine einzeln gestartete manuelle Zone.
 
-Im Einzelmodus läuft niemals mehr als eine Zone gleichzeitig. Im Gruppenmodus laufen ausschließlich Zonen derselben Gruppennummer parallel. Die Gruppen werden numerisch aufsteigend ausgeführt. Lücken in Zonen- und Gruppennummern sind zulässig.
+Im Einzelmodus läuft niemals mehr als eine Zone gleichzeitig. Im Gruppenmodus laufen Zonen mit Gruppe 0 weiterhin einzeln; ausschließlich Zonen mit derselben Gruppennummer von 1 bis 100 laufen parallel. Die Queue folgt der Reihenfolge der Zonentabelle. Eine Gruppe wird vollständig an der Stelle ihres ersten Mitglieds eingefügt und danach nicht nochmals aufgenommen.
 
 Während `opening-pump`, `opening-master` und `inter-zone` kann die jeweils nächste Zone bereits übersprungen werden. Mehrfaches Überspringen behält die ursprünglich laufende Druckaufbau- beziehungsweise Zonenwartezeit bei; die ausgelassenen Ventile werden nicht kurz geöffnet. Der instanzlokale Status nennt dabei die nächste Zone.
 

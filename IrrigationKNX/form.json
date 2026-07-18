@@ -51,7 +51,7 @@
       "caption": "Zones",
       "expanded": true,
       "items": [
-        { "type": "Label", "label": "Automatic program selects whether a zone participates. Irrigation mode is a variable: 0 disables watering, 1 waters zones individually (default), and 2 waters equal group numbers together in ascending group order. Each grouped zone retains its own runtime." },
+        { "type": "Label", "label": "Automatic program selects whether a zone participates. Irrigation mode 1 waters zones individually. Mode 2 follows the zone-table order: group 0 runs individually, while equal group numbers from 1 to 100 run together when that group first occurs. Each zone retains its own runtime." },
         {
           "type": "List",
           "name": "Zones",
@@ -68,21 +68,21 @@
             { "caption": "Feedback 2", "name": "Feedback2ID", "width": "135px", "add": 0, "edit": { "type": "SelectVariable", "validVariableTypes": [0] } },
             { "caption": "Inv. FB 1", "name": "Feedback1Inverted", "width": "55px", "add": false, "edit": { "type": "CheckBox" } },
             { "caption": "Inv. FB 2", "name": "Feedback2Inverted", "width": "55px", "add": false, "edit": { "type": "CheckBox" } },
-            { "caption": "Group", "name": "Group", "width": "55px", "add": 1, "edit": { "type": "NumberSpinner", "minimum": 1, "maximum": 100 } },
+            { "caption": "Group", "name": "Group", "width": "55px", "add": 0, "edit": { "type": "NumberSpinner", "minimum": 0, "maximum": 100 } },
             { "caption": "Responds to rain", "name": "RainSensitive", "width": "65px", "add": true, "edit": { "type": "CheckBox" } },
             { "caption": "Runtime", "name": "RuntimeMinutes", "width": "70px", "add": 10, "edit": { "type": "NumberSpinner", "minimum": 1, "maximum": 240, "suffix": " min" } }
           ],
           "values": [
-            { "Enabled": false, "Name": "Zone 1", "Valve1ID": 0, "Valve2ID": 0, "Feedback1ID": 0, "Feedback2ID": 0, "Feedback1Inverted": false, "Feedback2Inverted": false, "Group": 1, "RainSensitive": true, "RuntimeMinutes": 10 },
-            { "Enabled": false, "Name": "Zone 2", "Valve1ID": 0, "Valve2ID": 0, "Feedback1ID": 0, "Feedback2ID": 0, "Feedback1Inverted": false, "Feedback2Inverted": false, "Group": 2, "RainSensitive": true, "RuntimeMinutes": 10 },
-            { "Enabled": false, "Name": "Zone 3", "Valve1ID": 0, "Valve2ID": 0, "Feedback1ID": 0, "Feedback2ID": 0, "Feedback1Inverted": false, "Feedback2Inverted": false, "Group": 3, "RainSensitive": true, "RuntimeMinutes": 10 },
-            { "Enabled": false, "Name": "Zone 4", "Valve1ID": 0, "Valve2ID": 0, "Feedback1ID": 0, "Feedback2ID": 0, "Feedback1Inverted": false, "Feedback2Inverted": false, "Group": 4, "RainSensitive": true, "RuntimeMinutes": 10 },
-            { "Enabled": false, "Name": "Zone 5", "Valve1ID": 0, "Valve2ID": 0, "Feedback1ID": 0, "Feedback2ID": 0, "Feedback1Inverted": false, "Feedback2Inverted": false, "Group": 5, "RainSensitive": true, "RuntimeMinutes": 10 },
-            { "Enabled": false, "Name": "Zone 6", "Valve1ID": 0, "Valve2ID": 0, "Feedback1ID": 0, "Feedback2ID": 0, "Feedback1Inverted": false, "Feedback2Inverted": false, "Group": 6, "RainSensitive": true, "RuntimeMinutes": 10 },
-            { "Enabled": false, "Name": "Zone 7", "Valve1ID": 0, "Valve2ID": 0, "Feedback1ID": 0, "Feedback2ID": 0, "Feedback1Inverted": false, "Feedback2Inverted": false, "Group": 7, "RainSensitive": true, "RuntimeMinutes": 10 },
-            { "Enabled": false, "Name": "Zone 8", "Valve1ID": 0, "Valve2ID": 0, "Feedback1ID": 0, "Feedback2ID": 0, "Feedback1Inverted": false, "Feedback2Inverted": false, "Group": 8, "RainSensitive": true, "RuntimeMinutes": 10 },
-            { "Enabled": false, "Name": "Zone 9", "Valve1ID": 0, "Valve2ID": 0, "Feedback1ID": 0, "Feedback2ID": 0, "Feedback1Inverted": false, "Feedback2Inverted": false, "Group": 9, "RainSensitive": true, "RuntimeMinutes": 10 },
-            { "Enabled": false, "Name": "Zone 10", "Valve1ID": 0, "Valve2ID": 0, "Feedback1ID": 0, "Feedback2ID": 0, "Feedback1Inverted": false, "Feedback2Inverted": false, "Group": 10, "RainSensitive": true, "RuntimeMinutes": 10 }
+            { "Enabled": false, "Name": "Zone 1", "Valve1ID": 0, "Valve2ID": 0, "Feedback1ID": 0, "Feedback2ID": 0, "Feedback1Inverted": false, "Feedback2Inverted": false, "Group": 0, "RainSensitive": true, "RuntimeMinutes": 10 },
+            { "Enabled": false, "Name": "Zone 2", "Valve1ID": 0, "Valve2ID": 0, "Feedback1ID": 0, "Feedback2ID": 0, "Feedback1Inverted": false, "Feedback2Inverted": false, "Group": 0, "RainSensitive": true, "RuntimeMinutes": 10 },
+            { "Enabled": false, "Name": "Zone 3", "Valve1ID": 0, "Valve2ID": 0, "Feedback1ID": 0, "Feedback2ID": 0, "Feedback1Inverted": false, "Feedback2Inverted": false, "Group": 0, "RainSensitive": true, "RuntimeMinutes": 10 },
+            { "Enabled": false, "Name": "Zone 4", "Valve1ID": 0, "Valve2ID": 0, "Feedback1ID": 0, "Feedback2ID": 0, "Feedback1Inverted": false, "Feedback2Inverted": false, "Group": 0, "RainSensitive": true, "RuntimeMinutes": 10 },
+            { "Enabled": false, "Name": "Zone 5", "Valve1ID": 0, "Valve2ID": 0, "Feedback1ID": 0, "Feedback2ID": 0, "Feedback1Inverted": false, "Feedback2Inverted": false, "Group": 0, "RainSensitive": true, "RuntimeMinutes": 10 },
+            { "Enabled": false, "Name": "Zone 6", "Valve1ID": 0, "Valve2ID": 0, "Feedback1ID": 0, "Feedback2ID": 0, "Feedback1Inverted": false, "Feedback2Inverted": false, "Group": 0, "RainSensitive": true, "RuntimeMinutes": 10 },
+            { "Enabled": false, "Name": "Zone 7", "Valve1ID": 0, "Valve2ID": 0, "Feedback1ID": 0, "Feedback2ID": 0, "Feedback1Inverted": false, "Feedback2Inverted": false, "Group": 0, "RainSensitive": true, "RuntimeMinutes": 10 },
+            { "Enabled": false, "Name": "Zone 8", "Valve1ID": 0, "Valve2ID": 0, "Feedback1ID": 0, "Feedback2ID": 0, "Feedback1Inverted": false, "Feedback2Inverted": false, "Group": 0, "RainSensitive": true, "RuntimeMinutes": 10 },
+            { "Enabled": false, "Name": "Zone 9", "Valve1ID": 0, "Valve2ID": 0, "Feedback1ID": 0, "Feedback2ID": 0, "Feedback1Inverted": false, "Feedback2Inverted": false, "Group": 0, "RainSensitive": true, "RuntimeMinutes": 10 },
+            { "Enabled": false, "Name": "Zone 10", "Valve1ID": 0, "Valve2ID": 0, "Feedback1ID": 0, "Feedback2ID": 0, "Feedback1Inverted": false, "Feedback2Inverted": false, "Group": 0, "RainSensitive": true, "RuntimeMinutes": 10 }
           ]
         }
       ]

@@ -115,16 +115,16 @@ class WangariIrrigation extends IPSModule
         if (isset($data->configuration->Zones)) {
             $zones = json_decode((string) $data->configuration->Zones, true);
             if (is_array($zones)) {
-                foreach ($zones as $index => &$zoneConfiguration) {
+                foreach ($zones as &$zoneConfiguration) {
                     if (is_array($zoneConfiguration) && !array_key_exists('RainSensitive', $zoneConfiguration)) {
                         $zoneConfiguration['RainSensitive'] = true;
                         $changed = true;
                     }
                     if (is_array($zoneConfiguration) && !array_key_exists('Group', $zoneConfiguration)) {
-                        $zoneConfiguration['Group'] = min(100, $index + 1);
+                        $zoneConfiguration['Group'] = 0;
                         $changed = true;
-                    } elseif (is_array($zoneConfiguration) && ((int) $zoneConfiguration['Group'] > 100 || (int) $zoneConfiguration['Group'] < 1)) {
-                        $zoneConfiguration['Group'] = max(1, min(100, (int) $zoneConfiguration['Group']));
+                    } elseif (is_array($zoneConfiguration) && ((int) $zoneConfiguration['Group'] > 100 || (int) $zoneConfiguration['Group'] < 0)) {
+                        $zoneConfiguration['Group'] = max(0, min(100, (int) $zoneConfiguration['Group']));
                         $changed = true;
                     }
                 }
@@ -356,12 +356,22 @@ class WangariIrrigation extends IPSModule
 
         $queue = [];
         if ($mode === 2) {
-            $groups = [];
+            $handledGroups = [];
             foreach ($selectedZones as $zoneNumber) {
-                $groups[$this->zoneGroup($zoneNumber)][] = $zoneNumber;
+                $group = $this->zoneGroup($zoneNumber);
+                if ($group === 0) {
+                    $queue[] = [$zoneNumber];
+                    continue;
+                }
+                if (isset($handledGroups[$group])) {
+                    continue;
+                }
+                $queue[] = array_values(array_filter(
+                    $selectedZones,
+                    fn (int $candidate): bool => $this->zoneGroup($candidate) === $group
+                ));
+                $handledGroups[$group] = true;
             }
-            ksort($groups, SORT_NUMERIC);
-            $queue = array_values($groups);
         } else {
             foreach ($selectedZones as $zoneNumber) {
                 $queue[] = [$zoneNumber];
@@ -1442,16 +1452,16 @@ class WangariIrrigation extends IPSModule
             if (!is_array($zone)) {
                 continue;
             }
-            $group = (int) ($zone['Group'] ?? $index + 1);
+            $group = (int) ($zone['Group'] ?? 0);
             if ($group > 100) {
                 $warnings[] = sprintf(
                     $this->Translate('Zone %s: group %d exceeds 100 and is limited to 100'),
                     $this->zoneName($index + 1),
                     $group
                 );
-            } elseif ($group < 1) {
+            } elseif ($group < 0) {
                 $warnings[] = sprintf(
-                    $this->Translate('Zone %s: group %d is below 1 and is limited to 1'),
+                    $this->Translate('Zone %s: group %d is below 0 and is limited to 0'),
                     $this->zoneName($index + 1),
                     $group
                 );
@@ -1514,7 +1524,7 @@ class WangariIrrigation extends IPSModule
         $zones = array_slice($this->decodeListProperty('Zones'), 0, self::MAX_ZONES);
         foreach ($zones as $index => &$zone) {
             if (is_array($zone)) {
-                $zone['Group'] = max(1, min(100, (int) ($zone['Group'] ?? $index + 1)));
+                $zone['Group'] = max(0, min(100, (int) ($zone['Group'] ?? 0)));
             }
         }
         unset($zone);
@@ -1553,7 +1563,7 @@ class WangariIrrigation extends IPSModule
     private function zoneGroup(int $zoneNumber): int
     {
         $zone = $this->getZones()[$zoneNumber - 1] ?? null;
-        return max(1, min(100, (int) (is_array($zone) ? ($zone['Group'] ?? $zoneNumber) : $zoneNumber)));
+        return max(0, min(100, (int) (is_array($zone) ? ($zone['Group'] ?? 0) : 0)));
     }
 
     private function getOutputDefinitions(): array
@@ -1760,7 +1770,7 @@ class WangariIrrigation extends IPSModule
         }
         $names = array_map(fn (int $zoneNumber): string => $this->zoneName($zoneNumber), $zoneNumbers);
         $groupRun = $this->getValueInteger('IrrigationMode') === 2 && $this->GetBuffer('RunSource') !== 'manual-zone';
-        if (count($zoneNumbers) === 1 && !$groupRun) {
+        if (count($zoneNumbers) === 1 && (!$groupRun || $this->zoneGroup($zoneNumbers[0]) === 0)) {
             return $names[0];
         }
         return sprintf(
@@ -2009,7 +2019,7 @@ class WangariIrrigation extends IPSModule
             'Feedback1Inverted' => false,
             'Feedback2Inverted' => false,
             'RainSensitive' => true,
-            'Group' => min(100, $zone),
+            'Group' => 0,
             'RuntimeMinutes' => 10
         ];
     }

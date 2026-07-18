@@ -433,7 +433,7 @@ $tests['rain skips only rain-sensitive zones and advances a running program'] = 
     assertSameValue(2, GetValue($secondModule->GetIDForIdent('CurrentZone')), 'Start queue must omit rain-sensitive zones');
 };
 
-$tests['group mode starts the lowest group together and keeps individual runtimes'] = static function (): void {
+$tests['group mode follows table order and keeps individual runtimes'] = static function (): void {
     $valve1 = testCreateVariable(0, false);
     $valve2 = testCreateVariable(0, false);
     $valve3 = testCreateVariable(0, false);
@@ -453,29 +453,29 @@ $tests['group mode starts the lowest group together and keeps individual runtime
     ]);
     $module->RequestAction('IrrigationMode', 2);
     assertSameValue(true, $module->StartProgram(true), 'Group program should start');
-    assertSameValue(false, GetValue($valve1), 'Higher group must wait');
-    assertSameValue(true, GetValue($valve2), 'First member of lowest group must open');
-    assertSameValue(false, GetValue($valve3), 'Higher group must wait');
-    assertSameValue(true, GetValue($valve4), 'Second member of lowest group must open simultaneously');
+    assertSameValue(true, GetValue($valve1), 'Group at the first table position must start first');
+    assertSameValue(false, GetValue($valve2), 'A numerically lower group must still wait for its table position');
+    assertSameValue(true, GetValue($valve3), 'Later members of the first group must open simultaneously');
+    assertSameValue(false, GetValue($valve4), 'Later group must wait');
     $stateProfile = $GLOBALS['IPS_TEST_VARIABLES'][$module->GetIDForIdent('State')]['profile'];
-    assertSameValue('Watering: Group 2: Hedge, Beds', $GLOBALS['IPS_TEST_PROFILES'][$stateProfile]['associations'][2]['caption'], 'Status must name the active group and zones');
+    assertSameValue('Watering: Group 5: Lawn, Patio', $GLOBALS['IPS_TEST_PROFILES'][$stateProfile]['associations'][2]['caption'], 'Status must name the active group and zones');
 
-    setZoneRemaining($module, 2, -1);
-    setZoneRemaining($module, 4, 60);
+    setZoneRemaining($module, 1, -1);
+    setZoneRemaining($module, 3, 60);
     $module->Tick();
-    assertSameValue(false, GetValue($valve2), 'Shorter group member must close at its own deadline');
-    assertSameValue(true, GetValue($valve4), 'Longer group member must remain open');
+    assertSameValue(false, GetValue($valve1), 'Shorter group member must close at its own deadline');
+    assertSameValue(true, GetValue($valve3), 'Longer group member must remain open');
     assertSameValue(true, GetValue($module->GetIDForIdent('ProgramActive')), 'Group step must remain active for its longer member');
 
     forceDeadline($module);
     $module->Tick();
     forceDeadline($module);
     $module->Tick();
-    assertSameValue(true, GetValue($valve1), 'Next higher group must start after the group delay');
-    assertSameValue(true, GetValue($valve3), 'All members of the next group must open together');
+    assertSameValue(true, GetValue($valve2), 'Next group in table order must start after the group delay');
+    assertSameValue(true, GetValue($valve4), 'All members of the next group must open together');
     assertSameValue(true, $module->SkipCurrentZone(), 'Skip must skip the complete running group');
-    assertSameValue(false, GetValue($valve1), 'First skipped group member must close');
-    assertSameValue(false, GetValue($valve3), 'Second skipped group member must close');
+    assertSameValue(false, GetValue($valve2), 'First skipped group member must close');
+    assertSameValue(false, GetValue($valve4), 'Second skipped group member must close');
     assertSameValue(false, GetValue($module->GetIDForIdent('ProgramActive')), 'Skipping the last group must end the program');
 };
 
@@ -500,6 +500,48 @@ $tests['watering mode zero blocks starts and oversized groups are limited to 100
     $states = json_decode($module->GetBuffer('SimulatedOutputs'), true);
     assertSameValue(true, $states[(string) $valve1], 'Group 101 must be clamped into group 100');
     assertSameValue(true, $states[(string) $valve2], 'Configured group 100 must run with the clamped zone');
+};
+
+$tests['group zero runs zones individually in table order'] = static function (): void {
+    $valve1 = testCreateVariable(0, false);
+    $valve2 = testCreateVariable(0, false);
+    $valve3 = testCreateVariable(0, false);
+    $valve4 = testCreateVariable(0, false);
+    $zones = [zone(true, $valve1), zone(true, $valve2), zone(true, $valve3), zone(true, $valve4)];
+    foreach ($zones as $index => &$zoneConfiguration) {
+        $zoneConfiguration['Name'] = 'Zone ' . ($index + 1);
+    }
+    unset($zoneConfiguration);
+    $zones[0]['Group'] = 0;
+    $zones[1]['Group'] = 2;
+    $zones[2]['Group'] = 2;
+    $zones[3]['Group'] = 0;
+    $module = newModule([
+        'Enabled' => true,
+        'Simulation' => false,
+        'PumpLeadSeconds' => 0,
+        'InterZoneSeconds' => 0,
+        'Zones' => json_encode($zones)
+    ]);
+    $module->RequestAction('IrrigationMode', 2);
+    assertSameValue(true, $module->StartProgram(true), 'Group mode should start with an ungrouped zone');
+    assertSameValue(true, GetValue($valve1), 'First group-zero zone must run individually');
+    assertSameValue(false, GetValue($valve2), 'Following real group must wait');
+    assertSameValue(false, GetValue($valve3), 'All members of the following group must wait');
+    assertSameValue(false, GetValue($valve4), 'Later group-zero zone must wait separately');
+
+    forceDeadline($module);
+    $module->Tick();
+    forceDeadline($module);
+    $module->Tick();
+    assertSameValue(true, GetValue($valve2), 'Real group must start at its first table position');
+    assertSameValue(true, GetValue($valve3), 'Equal nonzero group must start together');
+    assertSameValue(true, $module->SkipCurrentZone(), 'Real group should be skippable as one step');
+    forceDeadline($module);
+    $module->Tick();
+    assertSameValue(true, GetValue($valve4), 'Last group-zero zone must run individually after the group');
+    $stateProfile = $GLOBALS['IPS_TEST_VARIABLES'][$module->GetIDForIdent('State')]['profile'];
+    assertSameValue('Watering: Zone 4', $GLOBALS['IPS_TEST_PROFILES'][$stateProfile]['associations'][2]['caption'], 'Ungrouped zones must not be labelled as group 0');
 };
 
 $tests['group pause resumes all members and rain removes only affected members'] = static function (): void {
@@ -707,7 +749,7 @@ $tests['migration preserves six configured zones and appends four disabled zones
     assertSameValue('Zone 7', $result[6]['Name'], 'Zone 7 should be appended');
     assertSameValue(false, $result[6]['Enabled'], 'New zones must be disabled');
     assertSameValue(true, $result[0]['RainSensitive'], 'Existing zones must preserve the former global rain behavior');
-    assertSameValue(1, $result[0]['Group'], 'Existing zones must receive their zone number as group default');
+    assertSameValue(0, $result[0]['Group'], 'Existing zones without a group must remain ungrouped');
     assertSameValue(5, $migrated['configuration']['PumpLeadSeconds'], 'Pump delay should be added without changing existing settings');
     assertSameValue(1, $migrated['configuration']['SimulationRuntimeMinutes'], 'Simulation runtime should receive its safe default');
 };
