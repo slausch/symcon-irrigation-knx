@@ -43,6 +43,23 @@ function zone(bool $enabled, int $valve1, int $valve2 = 0, int $feedback1 = 0, b
 function forceDeadline(WangariIrrigation $module): void
 {
     $module->SetBuffer('PhaseDeadline', (string) (time() - 1));
+    $activeZones = json_decode($module->GetBuffer('ActiveStepZones'), true);
+    if (is_array($activeZones) && count($activeZones) > 0) {
+        $deadlines = [];
+        foreach ($activeZones as $zoneNumber) {
+            $deadlines[(string) $zoneNumber] = time() - 1;
+        }
+        $module->SetBuffer('ActiveZoneDeadlines', json_encode($deadlines));
+    }
+}
+
+function setZoneRemaining(WangariIrrigation $module, int $zoneNumber, int $seconds): void
+{
+    $deadlines = json_decode($module->GetBuffer('ActiveZoneDeadlines'), true);
+    $deadlines = is_array($deadlines) ? $deadlines : [];
+    $deadlines[(string) $zoneNumber] = time() + $seconds;
+    $module->SetBuffer('ActiveZoneDeadlines', json_encode($deadlines));
+    $module->SetBuffer('PhaseDeadline', (string) (time() + $seconds));
 }
 
 function isScheduledFor(WangariIrrigation $module, string $date): bool
@@ -288,10 +305,10 @@ $tests['zone progress strings use seconds below one minute and remain instance-l
     assertSameValue('since 0 sec, 60 min remaining', GetValue($progress1), 'Initial progress should show seconds below one minute');
     assertSameValue('', GetValue($progress2), 'Second instance progress must remain untouched');
 
-    $module1->SetBuffer('PhaseDeadline', (string) (time() + 3566));
+    setZoneRemaining($module1, 1, 3566);
     $module1->Tick();
     assertSameValue('since 34 sec, 59 min remaining', GetValue($progress1), 'Elapsed seconds should be shown below one minute');
-    $module1->SetBuffer('PhaseDeadline', (string) (time() + 13));
+    setZoneRemaining($module1, 1, 13);
     $module1->Tick();
     assertSameValue('since 59 min, 13 sec remaining', GetValue($progress1), 'Remaining seconds should be shown below one minute');
     assertSameValue(true, $module1->Pause(), 'Progress test should be pausable');
@@ -416,6 +433,135 @@ $tests['rain skips only rain-sensitive zones and advances a running program'] = 
     assertSameValue(2, GetValue($secondModule->GetIDForIdent('CurrentZone')), 'Start queue must omit rain-sensitive zones');
 };
 
+$tests['group mode starts the lowest group together and keeps individual runtimes'] = static function (): void {
+    $valve1 = testCreateVariable(0, false);
+    $valve2 = testCreateVariable(0, false);
+    $valve3 = testCreateVariable(0, false);
+    $valve4 = testCreateVariable(0, false);
+    $zones = [zone(true, $valve1), zone(true, $valve2), zone(true, $valve3), zone(true, $valve4)];
+    foreach ([0 => ['Lawn', 5, 1], 1 => ['Hedge', 2, 1], 2 => ['Patio', 5, 1], 3 => ['Beds', 2, 2]] as $index => $settings) {
+        $zones[$index]['Name'] = $settings[0];
+        $zones[$index]['Group'] = $settings[1];
+        $zones[$index]['RuntimeMinutes'] = $settings[2];
+    }
+    $module = newModule([
+        'Enabled' => true,
+        'Simulation' => false,
+        'PumpLeadSeconds' => 0,
+        'InterZoneSeconds' => 0,
+        'Zones' => json_encode($zones)
+    ]);
+    $module->RequestAction('IrrigationMode', 2);
+    assertSameValue(true, $module->StartProgram(true), 'Group program should start');
+    assertSameValue(false, GetValue($valve1), 'Higher group must wait');
+    assertSameValue(true, GetValue($valve2), 'First member of lowest group must open');
+    assertSameValue(false, GetValue($valve3), 'Higher group must wait');
+    assertSameValue(true, GetValue($valve4), 'Second member of lowest group must open simultaneously');
+    $stateProfile = $GLOBALS['IPS_TEST_VARIABLES'][$module->GetIDForIdent('State')]['profile'];
+    assertSameValue('Watering: Group 2: Hedge, Beds', $GLOBALS['IPS_TEST_PROFILES'][$stateProfile]['associations'][2]['caption'], 'Status must name the active group and zones');
+
+    setZoneRemaining($module, 2, -1);
+    setZoneRemaining($module, 4, 60);
+    $module->Tick();
+    assertSameValue(false, GetValue($valve2), 'Shorter group member must close at its own deadline');
+    assertSameValue(true, GetValue($valve4), 'Longer group member must remain open');
+    assertSameValue(true, GetValue($module->GetIDForIdent('ProgramActive')), 'Group step must remain active for its longer member');
+
+    forceDeadline($module);
+    $module->Tick();
+    forceDeadline($module);
+    $module->Tick();
+    assertSameValue(true, GetValue($valve1), 'Next higher group must start after the group delay');
+    assertSameValue(true, GetValue($valve3), 'All members of the next group must open together');
+    assertSameValue(true, $module->SkipCurrentZone(), 'Skip must skip the complete running group');
+    assertSameValue(false, GetValue($valve1), 'First skipped group member must close');
+    assertSameValue(false, GetValue($valve3), 'Second skipped group member must close');
+    assertSameValue(false, GetValue($module->GetIDForIdent('ProgramActive')), 'Skipping the last group must end the program');
+};
+
+$tests['watering mode zero blocks starts and oversized groups are limited to 100'] = static function (): void {
+    $valve1 = testCreateVariable(0, false);
+    $valve2 = testCreateVariable(0, false);
+    $zones = [zone(true, $valve1), zone(true, $valve2)];
+    $zones[0]['Group'] = 101;
+    $zones[1]['Group'] = 100;
+    $module = newModule([
+        'Enabled' => true,
+        'Simulation' => true,
+        'Zones' => json_encode($zones)
+    ]);
+    assertSameValue(true, str_contains(GetValue($module->GetIDForIdent('LastError')), 'limited to 100'), 'Oversized group must produce a visible warning');
+    $module->RequestAction('IrrigationMode', 0);
+    assertSameValue(false, $module->StartProgram(true), 'Mode zero must block watering');
+    assertSameValue(false, $module->StartZone(1, 1), 'Mode zero must also block a manual zone');
+    assertSameValue(false, GetValue($module->GetIDForIdent('ProgramActive')), 'No program may run in mode zero');
+    $module->RequestAction('IrrigationMode', 2);
+    assertSameValue(true, $module->StartProgram(true), 'Group mode should start after selection');
+    $states = json_decode($module->GetBuffer('SimulatedOutputs'), true);
+    assertSameValue(true, $states[(string) $valve1], 'Group 101 must be clamped into group 100');
+    assertSameValue(true, $states[(string) $valve2], 'Configured group 100 must run with the clamped zone');
+};
+
+$tests['group pause resumes all members and rain removes only affected members'] = static function (): void {
+    $rain = testCreateVariable(0, false, false);
+    $sensitiveValve = testCreateVariable(0, false);
+    $unaffectedValve = testCreateVariable(0, false);
+    $zones = [zone(true, $sensitiveValve, 0, 0, true), zone(true, $unaffectedValve, 0, 0, false)];
+    $zones[0]['Group'] = 1;
+    $zones[1]['Group'] = 1;
+    $module = newModule([
+        'Enabled' => true,
+        'Simulation' => true,
+        'RainSensorID' => $rain,
+        'RainActiveValue' => true,
+        'Zones' => json_encode($zones)
+    ]);
+    $module->RequestAction('IrrigationMode', 2);
+    assertSameValue(true, $module->StartProgram(true), 'Grouped zones should start');
+    setZoneRemaining($module, 1, 30);
+    setZoneRemaining($module, 2, 45);
+    assertSameValue(true, $module->Pause(), 'Complete group should pause');
+    $states = json_decode($module->GetBuffer('SimulatedOutputs'), true);
+    assertSameValue(false, $states[(string) $sensitiveValve], 'First group member must close for pause');
+    assertSameValue(false, $states[(string) $unaffectedValve], 'Second group member must close for pause');
+    assertSameValue(true, $module->Resume(), 'Complete group should resume');
+    assertSameValue(45, GetValue($module->GetIDForIdent('RemainingSeconds')), 'Resume must show the longest remaining member runtime');
+    $states = json_decode($module->GetBuffer('SimulatedOutputs'), true);
+    assertSameValue(true, $states[(string) $sensitiveValve], 'First group member must reopen');
+    assertSameValue(true, $states[(string) $unaffectedValve], 'Second group member must reopen');
+
+    SetValue($rain, true);
+    $module->Tick();
+    $states = json_decode($module->GetBuffer('SimulatedOutputs'), true);
+    assertSameValue(false, $states[(string) $sensitiveValve], 'Rain-sensitive group member must close');
+    assertSameValue(true, $states[(string) $unaffectedValve], 'Unaffected group member must keep watering');
+    assertSameValue(true, GetValue($module->GetIDForIdent('ProgramActive')), 'Mixed group must continue with unaffected member');
+    assertSameValue(2, GetValue($module->GetIDForIdent('CurrentZone')), 'Current zone must point to the remaining group member');
+};
+
+$tests['missing OFF feedback is ignored by default while the next zone starts'] = static function (): void {
+    $valve1 = testCreateVariable(0, false);
+    $feedback1 = testCreateVariable(0, false, false);
+    $valve2 = testCreateVariable(0, false);
+    $module = newModule([
+        'Enabled' => true,
+        'Simulation' => false,
+        'InterZoneSeconds' => 0,
+        'FeedbackTimeoutSeconds' => 1,
+        'Zones' => json_encode([zone(true, $valve1, 0, $feedback1), zone(true, $valve2)])
+    ]);
+    assertSameValue(true, $module->StartProgram(true), 'Program should start with OFF monitoring disabled');
+    SetValue($feedback1, true);
+    forceDeadline($module);
+    $module->Tick();
+    assertSameValue('inter-zone', $module->GetBuffer('Phase'), 'First zone should finish normally');
+    forceDeadline($module);
+    $module->Tick();
+    assertSameValue(2, GetValue($module->GetIDForIdent('CurrentZone')), 'Missing OFF telegram must not block the next zone');
+    assertSameValue(true, GetValue($valve2), 'Next zone must open despite stale ON feedback of the previous zone');
+    assertSameValue('', GetValue($module->GetIDForIdent('LastError')), 'Ignored OFF feedback must not create an error');
+};
+
 $tests['soil moisture supports both comparison directions'] = static function (): void {
     $soil = testCreateVariable(2, 70.0, false);
     $zoneValve = testCreateVariable(0, false);
@@ -485,6 +631,7 @@ $tests['shutdown waits for confirmed closed feedback'] = static function (): voi
         'Simulation' => false,
         'MasterLeadSeconds' => 0,
         'FeedbackTimeoutSeconds' => 1,
+        'MonitorClosedFeedback' => true,
         'Zones' => json_encode([zone(true, $zoneValve, 0, $feedback)])
     ]);
     assertSameValue(true, $module->StartProgram(true), 'Program should start');
@@ -507,7 +654,7 @@ $tests['pause closes and resume continues the same remaining runtime'] = static 
         'Zones' => json_encode([zone(true, $zoneValve)])
     ]);
     assertSameValue(true, $module->StartProgram(true), 'Program should start');
-    $module->SetBuffer('PhaseDeadline', (string) (time() + 30));
+    setZoneRemaining($module, 1, 30);
     assertSameValue(true, $module->Pause(), 'Active zone should pause');
     assertSameValue('paused', $module->GetBuffer('Phase'), 'Phase should be paused');
     assertSameValue(7, GetValue($module->GetIDForIdent('State')), 'State should show paused');
@@ -546,6 +693,7 @@ $tests['migration preserves six configured zones and appends four disabled zones
         $zones[] = zone($number <= 2, 100 + $number);
         $zones[$number - 1]['Name'] = 'Existing ' . $number;
         unset($zones[$number - 1]['RainSensitive']);
+        unset($zones[$number - 1]['Group']);
     }
     $persistence = json_encode([
         'configuration' => ['Zones' => json_encode($zones)],
@@ -559,6 +707,7 @@ $tests['migration preserves six configured zones and appends four disabled zones
     assertSameValue('Zone 7', $result[6]['Name'], 'Zone 7 should be appended');
     assertSameValue(false, $result[6]['Enabled'], 'New zones must be disabled');
     assertSameValue(true, $result[0]['RainSensitive'], 'Existing zones must preserve the former global rain behavior');
+    assertSameValue(1, $result[0]['Group'], 'Existing zones must receive their zone number as group default');
     assertSameValue(5, $migrated['configuration']['PumpLeadSeconds'], 'Pump delay should be added without changing existing settings');
     assertSameValue(1, $migrated['configuration']['SimulationRuntimeMinutes'], 'Simulation runtime should receive its safe default');
 };

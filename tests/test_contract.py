@@ -38,14 +38,21 @@ class ModuleContractTest(unittest.TestCase):
         self.assertEqual(10, len(lists["Zones"]["values"]))
         self.assertEqual(10, lists["Zones"]["rowCount"])
         self.assertIn("RainSensitive", [column["name"] for column in lists["Zones"]["columns"]])
+        self.assertIn("Group", [column["name"] for column in lists["Zones"]["columns"]])
         self.assertTrue(all(row["RainSensitive"] for row in lists["Zones"]["values"]))
+        self.assertEqual(list(range(1, 11)), [row["Group"] for row in lists["Zones"]["values"]])
         for table in lists.values():
             for column in table["columns"]:
                 self.assertRegex(column["width"], r"^\d+px$")
         self.assertLessEqual(sum(int(column["width"][:-2]) for column in lists["MainValves"]["columns"]), 950)
         self.assertLessEqual(sum(int(column["width"][:-2]) for column in lists["Zones"]["columns"]), 1100)
 
-        actions = form["actions"][1]["items"]
+        mode_actions = form["actions"][1]["items"]
+        self.assertEqual(
+            ["No watering", "Water zones individually", "Water groups"],
+            [item.get("caption") for item in mode_actions],
+        )
+        actions = form["actions"][2]["items"]
         self.assertTrue(any(item.get("caption") == "Pause / Resume" for item in actions))
         self.assertTrue(any(item.get("caption") == "Skip zone" for item in actions))
         self.assertTrue(any(item.get("caption") == "Safety stop" for item in actions))
@@ -82,6 +89,8 @@ class ModuleContractTest(unittest.TestCase):
         self.assertIn("CurrentZoneTotalSeconds", source)
         self.assertIn("clearAllZoneProgress", source)
         self.assertIn("'IRRKNX.State.' . $this->InstanceID", source)
+        self.assertIn("ActiveStepZones", source)
+        self.assertIn("MonitorClosedFeedback", source)
 
     def test_state_machine_has_all_safety_paths(self):
         source = MODULE.read_text(encoding="utf-8")

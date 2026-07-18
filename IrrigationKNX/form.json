@@ -51,11 +51,11 @@
       "caption": "Zones",
       "expanded": true,
       "items": [
-        { "type": "Label", "label": "Automatic program selects whether a zone participates in the complete program. Runtime and participation are also available as variables for scripts and visualizations." },
+        { "type": "Label", "label": "Automatic program selects whether a zone participates. Irrigation mode is a variable: 0 disables watering, 1 waters zones individually (default), and 2 waters equal group numbers together in ascending group order. Each grouped zone retains its own runtime." },
         {
           "type": "List",
           "name": "Zones",
-          "caption": "Ten sequential zones with up to two valves each",
+          "caption": "Ten zones with up to two valves each; optionally grouped",
           "rowCount": 10,
           "add": false,
           "delete": false,
@@ -68,20 +68,21 @@
             { "caption": "Feedback 2", "name": "Feedback2ID", "width": "135px", "add": 0, "edit": { "type": "SelectVariable", "validVariableTypes": [0] } },
             { "caption": "Inv. FB 1", "name": "Feedback1Inverted", "width": "55px", "add": false, "edit": { "type": "CheckBox" } },
             { "caption": "Inv. FB 2", "name": "Feedback2Inverted", "width": "55px", "add": false, "edit": { "type": "CheckBox" } },
+            { "caption": "Group", "name": "Group", "width": "55px", "add": 1, "edit": { "type": "NumberSpinner", "minimum": 1, "maximum": 100 } },
             { "caption": "Responds to rain", "name": "RainSensitive", "width": "65px", "add": true, "edit": { "type": "CheckBox" } },
             { "caption": "Runtime", "name": "RuntimeMinutes", "width": "70px", "add": 10, "edit": { "type": "NumberSpinner", "minimum": 1, "maximum": 240, "suffix": " min" } }
           ],
           "values": [
-            { "Enabled": false, "Name": "Zone 1", "Valve1ID": 0, "Valve2ID": 0, "Feedback1ID": 0, "Feedback2ID": 0, "Feedback1Inverted": false, "Feedback2Inverted": false, "RainSensitive": true, "RuntimeMinutes": 10 },
-            { "Enabled": false, "Name": "Zone 2", "Valve1ID": 0, "Valve2ID": 0, "Feedback1ID": 0, "Feedback2ID": 0, "Feedback1Inverted": false, "Feedback2Inverted": false, "RainSensitive": true, "RuntimeMinutes": 10 },
-            { "Enabled": false, "Name": "Zone 3", "Valve1ID": 0, "Valve2ID": 0, "Feedback1ID": 0, "Feedback2ID": 0, "Feedback1Inverted": false, "Feedback2Inverted": false, "RainSensitive": true, "RuntimeMinutes": 10 },
-            { "Enabled": false, "Name": "Zone 4", "Valve1ID": 0, "Valve2ID": 0, "Feedback1ID": 0, "Feedback2ID": 0, "Feedback1Inverted": false, "Feedback2Inverted": false, "RainSensitive": true, "RuntimeMinutes": 10 },
-            { "Enabled": false, "Name": "Zone 5", "Valve1ID": 0, "Valve2ID": 0, "Feedback1ID": 0, "Feedback2ID": 0, "Feedback1Inverted": false, "Feedback2Inverted": false, "RainSensitive": true, "RuntimeMinutes": 10 },
-            { "Enabled": false, "Name": "Zone 6", "Valve1ID": 0, "Valve2ID": 0, "Feedback1ID": 0, "Feedback2ID": 0, "Feedback1Inverted": false, "Feedback2Inverted": false, "RainSensitive": true, "RuntimeMinutes": 10 },
-            { "Enabled": false, "Name": "Zone 7", "Valve1ID": 0, "Valve2ID": 0, "Feedback1ID": 0, "Feedback2ID": 0, "Feedback1Inverted": false, "Feedback2Inverted": false, "RainSensitive": true, "RuntimeMinutes": 10 },
-            { "Enabled": false, "Name": "Zone 8", "Valve1ID": 0, "Valve2ID": 0, "Feedback1ID": 0, "Feedback2ID": 0, "Feedback1Inverted": false, "Feedback2Inverted": false, "RainSensitive": true, "RuntimeMinutes": 10 },
-            { "Enabled": false, "Name": "Zone 9", "Valve1ID": 0, "Valve2ID": 0, "Feedback1ID": 0, "Feedback2ID": 0, "Feedback1Inverted": false, "Feedback2Inverted": false, "RainSensitive": true, "RuntimeMinutes": 10 },
-            { "Enabled": false, "Name": "Zone 10", "Valve1ID": 0, "Valve2ID": 0, "Feedback1ID": 0, "Feedback2ID": 0, "Feedback1Inverted": false, "Feedback2Inverted": false, "RainSensitive": true, "RuntimeMinutes": 10 }
+            { "Enabled": false, "Name": "Zone 1", "Valve1ID": 0, "Valve2ID": 0, "Feedback1ID": 0, "Feedback2ID": 0, "Feedback1Inverted": false, "Feedback2Inverted": false, "Group": 1, "RainSensitive": true, "RuntimeMinutes": 10 },
+            { "Enabled": false, "Name": "Zone 2", "Valve1ID": 0, "Valve2ID": 0, "Feedback1ID": 0, "Feedback2ID": 0, "Feedback1Inverted": false, "Feedback2Inverted": false, "Group": 2, "RainSensitive": true, "RuntimeMinutes": 10 },
+            { "Enabled": false, "Name": "Zone 3", "Valve1ID": 0, "Valve2ID": 0, "Feedback1ID": 0, "Feedback2ID": 0, "Feedback1Inverted": false, "Feedback2Inverted": false, "Group": 3, "RainSensitive": true, "RuntimeMinutes": 10 },
+            { "Enabled": false, "Name": "Zone 4", "Valve1ID": 0, "Valve2ID": 0, "Feedback1ID": 0, "Feedback2ID": 0, "Feedback1Inverted": false, "Feedback2Inverted": false, "Group": 4, "RainSensitive": true, "RuntimeMinutes": 10 },
+            { "Enabled": false, "Name": "Zone 5", "Valve1ID": 0, "Valve2ID": 0, "Feedback1ID": 0, "Feedback2ID": 0, "Feedback1Inverted": false, "Feedback2Inverted": false, "Group": 5, "RainSensitive": true, "RuntimeMinutes": 10 },
+            { "Enabled": false, "Name": "Zone 6", "Valve1ID": 0, "Valve2ID": 0, "Feedback1ID": 0, "Feedback2ID": 0, "Feedback1Inverted": false, "Feedback2Inverted": false, "Group": 6, "RainSensitive": true, "RuntimeMinutes": 10 },
+            { "Enabled": false, "Name": "Zone 7", "Valve1ID": 0, "Valve2ID": 0, "Feedback1ID": 0, "Feedback2ID": 0, "Feedback1Inverted": false, "Feedback2Inverted": false, "Group": 7, "RainSensitive": true, "RuntimeMinutes": 10 },
+            { "Enabled": false, "Name": "Zone 8", "Valve1ID": 0, "Valve2ID": 0, "Feedback1ID": 0, "Feedback2ID": 0, "Feedback1Inverted": false, "Feedback2Inverted": false, "Group": 8, "RainSensitive": true, "RuntimeMinutes": 10 },
+            { "Enabled": false, "Name": "Zone 9", "Valve1ID": 0, "Valve2ID": 0, "Feedback1ID": 0, "Feedback2ID": 0, "Feedback1Inverted": false, "Feedback2Inverted": false, "Group": 9, "RainSensitive": true, "RuntimeMinutes": 10 },
+            { "Enabled": false, "Name": "Zone 10", "Valve1ID": 0, "Valve2ID": 0, "Feedback1ID": 0, "Feedback2ID": 0, "Feedback1Inverted": false, "Feedback2Inverted": false, "Group": 10, "RainSensitive": true, "RuntimeMinutes": 10 }
           ]
         }
       ]
@@ -135,6 +136,7 @@
             { "type": "NumberSpinner", "name": "PumpLeadSeconds", "caption": "Pump start delay", "minimum": 0, "maximum": 300, "suffix": " s" },
             { "type": "NumberSpinner", "name": "InterZoneSeconds", "caption": "Zone and main-valve delay", "minimum": 0, "maximum": 300, "suffix": " s" },
             { "type": "NumberSpinner", "name": "FeedbackTimeoutSeconds", "caption": "Feedback timeout", "minimum": 1, "maximum": 300, "suffix": " s" },
+            { "type": "CheckBox", "name": "MonitorClosedFeedback", "caption": "Monitor OFF feedback" },
             { "type": "NumberSpinner", "name": "MaximumProgramMinutes", "caption": "Maximum program runtime", "minimum": 1, "maximum": 1440, "suffix": " min" }
           ]
         }
@@ -153,7 +155,15 @@
     }
   ],
   "actions": [
-    { "type": "Label", "label": "Use simulation for initial commissioning. Skip also works during pump pressure build-up and the existing delay between zones; repeated presses do not restart these delays. The status names the active or next zone. Safety stop closes every configured output and records a fault." },
+    { "type": "Label", "label": "Use simulation for initial commissioning. Skip acts on the complete current or next group in group mode. OFF feedback monitoring is disabled by default because missing KNX OFF telegrams otherwise block the sequence; ON feedback remains monitored." },
+    {
+      "type": "RowLayout",
+      "items": [
+        { "type": "Button", "caption": "No watering", "onClick": "IRRKNX_SetIrrigationMode($id, 0);" },
+        { "type": "Button", "caption": "Water zones individually", "onClick": "IRRKNX_SetIrrigationMode($id, 1);" },
+        { "type": "Button", "caption": "Water groups", "onClick": "IRRKNX_SetIrrigationMode($id, 2);" }
+      ]
+    },
     {
       "type": "RowLayout",
       "items": [

@@ -6,14 +6,14 @@ Ein sicherer Stopp wird ausgelöst bei:
 
 - manuellem Stopp oder Sicherheitsstopp,
 - erreichtem Bodenfeuchte-Grenzwert,
-- fehlender oder falscher Ventilrückmeldung nach dem Timeout,
+- fehlender oder falscher EIN-Rückmeldung nach dem Timeout sowie optional fehlender AUS-Rückmeldung,
 - Überschreitung der maximalen Programmlaufzeit,
 - Modul-Deaktivierung,
 - Konfigurationsänderung während eines Laufs,
 - erkanntem unterbrochenem Lauf nach Neustart,
 - Ausnahme beim Aufruf einer Ventilaktion.
 
-Der Stopp fordert zuerst für sämtliche konfigurierten Zonenventile `false` und danach für die Hauptventile `false` an. Zusätzlich werden noch bekannte Ausgänge aus der vorherigen Konfiguration geschlossen. Sind Rückmeldungen vorhanden, bleibt die Instanz anschließend in der Phase „Warte auf Geschlossen-Rückmeldung“. Erst bestätigte Aus-Zustände beenden den Stopp; ein Timeout setzt einen Fehler.
+Der Stopp fordert zuerst für sämtliche konfigurierten Zonenventile `false` und danach für die Hauptventile `false` an. Zusätzlich werden noch bekannte Ausgänge aus der vorherigen Konfiguration geschlossen. Nur wenn „AUS-Rückmeldung überwachen“ aktiviert ist, bleibt die Instanz anschließend bis zur Bestätigung oder zum Timeout in der Phase „Warte auf Geschlossen-Rückmeldung“. Standardmäßig werden fehlende AUS-Telegramme nicht als Fehler behandelt.
 
 ## Grenzen der Software-Sicherheit
 
@@ -26,7 +26,9 @@ Eine Softwaresteuerung ersetzt keine hydraulische oder elektrische Sicherheit. F
 - echte Endlagen- oder Durchflussrückmeldung statt reiner Software-Spiegelwerte,
 - beaufsichtigter Test jeder Abschaltursache.
 
-Eine Pause schließt aus Sicherheitsgründen nicht nur die aktuelle Zone, sondern auch die Hauptventile beziehungsweise Pumpe. Vor dem Fortsetzen müssen konfigurierte Rückmeldungen den geschlossenen Zustand bestätigt haben.
+Im Gruppenmodus muss die Anlage für den gleichzeitigen Betrieb aller Ventile einer Gruppe ausgelegt sein. Förderleistung, Leitungsquerschnitte, Druck, Netzteil- und Aktorbelastung liegen außerhalb der Softwareprüfung.
+
+Eine Pause schließt aus Sicherheitsgründen alle aktuell laufenden Zonen sowie Hauptventil und Pumpe. Bei aktivierter AUS-Überwachung müssen konfigurierte Rückmeldungen vor dem Fortsetzen den geschlossenen Zustand bestätigt haben.
 
 „Überspringen“ schließt eine bereits laufende Zone zuerst und öffnet die nächste erst nach der konfigurierten Zonenwartezeit. Während Pumpen-Druckaufbau oder Zonenwechsel kann eine noch geschlossene wartende Zone ohne Ventilbefehl übersprungen werden; mehrfaches Drücken verlängert die bereits laufende Wartezeit nicht. Pumpe und Hauptventil bleiben während eines normalen Zonenwechsels geöffnet. Sobald keine weitere Zone in der Modulwarteschlange vorhanden ist, werden sie auch bei einer manuellen Einzelzone geschlossen.
 

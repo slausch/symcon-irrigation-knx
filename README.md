@@ -1,6 +1,6 @@
 # Wangari Irrigation
 
-Eigenständiges IP-Symcon-9-Modul für eine sichere Bewässerungssteuerung. Es steuert optional eine Beregnungspumpe und ein Hauptventil sowie zehn sequenziell laufende Zonen mit jeweils bis zu zwei Ventilen.
+Eigenständiges IP-Symcon-9-Modul für eine sichere Bewässerungssteuerung. Es steuert optional eine Beregnungspumpe und ein Hauptventil sowie zehn einzeln oder gruppenweise laufende Zonen mit jeweils bis zu zwei Ventilen.
 
 Das Modul wurde neu strukturiert. Die öffentliche Referenz [`elueckel/irrigation-control`](https://github.com/elueckel/irrigation-control) diente ausschließlich zur Ermittlung des Funktionsumfangs und für eine Fehleranalyse. Es wurde kein Quellcode übernommen.
 
@@ -10,7 +10,8 @@ Das Modul wurde neu strukturiert. Die öffentliche Referenz [`elueckel/irrigatio
 - optionales Hauptventil; die Steuerung funktioniert auch ohne Pumpe und Hauptventil
 - gemeinsame Wartezeit für Hauptventil und Zonenwechsel (Standard: 2 Sekunden)
 - bis zu zehn Zonen mit jeweils einem oder zwei Boolean-Ventilen
-- sequenzieller Programmlauf; deaktivierte Zonen werden sicher übersprungen
+- wählbare Bewässerungsart: keine Bewässerung, Zonen einzeln oder Zonen gleicher Gruppennummer gemeinsam
+- Gruppen 1 bis 100; Ausführung aufsteigend ab der niedrigsten vorhandenen Gruppe
 - Zeitplan nach Uhrzeit, Wochentagen und Tagesintervall mit festem Ankerdatum
 - manuelles Gesamtprogramm oder einzelne manuelle Zone
 - Pause mit geschlossenem Zonen- und Hauptventil sowie Fortsetzung der gespeicherten Restlaufzeit
@@ -19,7 +20,7 @@ Das Modul wurde neu strukturiert. Die öffentliche Referenz [`elueckel/irrigatio
 - eigener Fortschritts-String je Zone, zum Beispiel `seit 7 Min, noch 53 Min`
 - Boolean-Regensensor und numerischer Bodenfeuchtesensor
 - optionale Boolean-Rückmeldung für jedes Haupt- und Zonenventil
-- Rückmelde-Timeout, maximale Gesamtlaufzeit und sofortiger Sensor-Stopp
+- EIN-Rückmelde-Timeout, optional zuschaltbare AUS-Rückmeldungsüberwachung, maximale Gesamtlaufzeit und sofortiger Sensor-Stopp
 - sicherer Stopp bei Deaktivierung, Konfigurationsänderung und Neustart
 - Simulationsmodus ohne Hardware-Schaltbefehle
 - separate Testlaufzeit für die Simulation (Standard: 1 Minute je Zone)
@@ -55,6 +56,7 @@ Empfohlene Erstinbetriebnahme:
 Die Instanz legt folgende bedienbare Variablen an:
 
 - `Automatic`: Zeitplan ein-/ausschalten
+- `IrrigationMode`: `0` keine Bewässerung, `1` Zonen einzeln (Standard), `2` Gruppen bewässern
 - `ProgramActive`: Gesamtprogramm starten oder stoppen
 - `Pause`: laufende Zone, Pumpe und Hauptventil schließen; mit derselben Restlaufzeit fortsetzen
 - `Skip`: während des Druckaufbaus oder Zonenwechsels die nächste wartende Zone ohne Ventilöffnung auslassen; eine laufende Zone schließen und nach der Wartezeit fortfahren
@@ -78,6 +80,7 @@ IRRKNX_Resume($InstanceID);
 IRRKNX_SkipCurrentZone($InstanceID);
 IRRKNX_SetZoneAutomatic($InstanceID, 3, true);
 IRRKNX_SetZoneRuntime($InstanceID, 3, 25);
+IRRKNX_SetIrrigationMode($InstanceID, 2);
 IRRKNX_Stop($InstanceID);
 IRRKNX_EmergencyStop($InstanceID, 'Leckage erkannt');
 ```
@@ -85,6 +88,8 @@ IRRKNX_EmergencyStop($InstanceID, 'Leckage erkannt');
 Manuelle Starts beachten standardmäßig ebenfalls Regen und Bodenfeuchte. Es gibt bewusst keinen stillen Sensor-Override.
 
 Der Status nennt während der Vorbereitung und des Zonenwechsels die nächste Zone, während der Bewässerung die aktive Zone und während einer Pause die pausierte Zone. Mehrfaches Überspringen während derselben Pumpen- oder Zonenwartezeit verlängert diese Wartezeit nicht.
+
+Im Gruppenmodus werden alle teilnehmenden Zonen nach ihrer konfigurierten Gruppennummer von 1 bis 100 zusammengefasst. Die niedrigste vorhandene Gruppe startet zuerst. Werte über 100 werden mit sichtbarer Warnung intern auf 100 begrenzt. Alle Zonen eines Gruppenschritts öffnen gemeinsam, behalten jedoch ihre jeweilige Zonenlaufzeit und schließen daher gegebenenfalls zu unterschiedlichen Zeiten. Erst wenn die letzte Zone der Gruppe beendet ist, folgt die Zonenwartezeit vor der nächsten Gruppe. Pause und Überspringen wirken auf den vollständigen aktuellen Gruppenschritt; bei Regen schließen innerhalb einer gemischten Gruppe nur die als regenempfindlich markierten Zonen.
 
 Nach der letzten noch vorhandenen Zone wird immer der vollständige Abschaltpfad ausgeführt: alle Zonenventile schließen, anschließend Pumpe stoppen und das optionale Hauptventil schließen. Das gilt gleichermaßen für Gesamtprogramme und über `Manuelle Zone` beziehungsweise `IRRKNX_StartZone()` gestartete Einzelzonen. Direkte Fremdschaltungen einer konfigurierten Ventilvariable außerhalb dieser Modulbedienung sind kein Modullauf und werden deshalb nicht als manuelle Zone überwacht.
 
@@ -108,6 +113,9 @@ RequestAction($automatik, true);
 
 $zonenWartezeit = IPS_GetObjectIDByIdent('InterZoneSeconds', $InstanceID);
 RequestAction($zonenWartezeit, 2);
+
+$bewässerungsart = IPS_GetObjectIDByIdent('IrrigationMode', $InstanceID);
+RequestAction($bewässerungsart, 2); // Gruppen bewässern
 ```
 
 Änderungen über Variablen gelten sofort und bleiben bis zur nächsten übernommenen Instanzkonfiguration bestehen. Beim Übernehmen der Konfiguration werden die dort eingetragenen Werte wieder als Vorgabe in die Variablen geladen. Jede übernommene Konfigurationsänderung stoppt einen gegebenenfalls laufenden Bewässerungslauf sicher.
@@ -122,7 +130,7 @@ Ein Modulupdate aktualisiert den gemeinsamen Programmcode. Alle vorhandenen Inst
 
 ## Fortschrittsanzeige je Zone
 
-Während eine Zone läuft, enthält nur deren Fortschrittsvariable einen Text. Zeiten unter einer Minute werden in Sekunden, längere Zeiten in vollen Minuten dargestellt:
+Während eine Zone läuft, enthält ihre Fortschrittsvariable einen Text. Im Gruppenmodus können deshalb mehrere Fortschrittsvariablen gleichzeitig gefüllt sein. Zeiten unter einer Minute werden in Sekunden, längere Zeiten in vollen Minuten dargestellt:
 
 - `seit 34 Sek, noch 59 Min`
 - `seit 7 Min, noch 53 Min`
@@ -155,7 +163,9 @@ Beide Sensoren werden vor manuellen und automatischen Starts sowie während eine
 
 ## Rückmeldungen
 
-Rückmeldungen sind optional. Sobald eine Rückmeldevariable konfiguriert ist, muss sie innerhalb von `FeedbackTimeoutSeconds` den erwarteten Zustand melden. Andernfalls beendet das Modul den Lauf, fordert für alle Zonenventile `false` an und schließt danach die Hauptventile. Invertierte Kontakte können je Rückmeldung konfiguriert werden.
+Rückmeldungen sind optional. Eine konfigurierte EIN-Rückmeldung muss innerhalb von `FeedbackTimeoutSeconds` den erwarteten Zustand melden. Andernfalls beendet das Modul den Lauf, fordert für alle Zonenventile `false` an und schließt danach die Hauptventile. Invertierte Kontakte können je Rückmeldung konfiguriert werden.
+
+Die Option `AUS-Rückmeldung überwachen` ist standardmäßig deaktiviert. Dadurch blockiert ein fehlendes KNX-AUS-Telegramm weder den nächsten Zonen- beziehungsweise Gruppenschritt noch den Abschluss und erzeugt keine Fehlermeldung. Wird die Option aktiviert, gilt wieder die strengere Prüfung: Ein fehlender Geschlossen-Status blockiert bis zum Timeout und führt anschließend zum Fehlerstatus.
 
 Eine Rückmeldung sollte den tatsächlichen Ventilzustand erfassen. Die reine Spiegelung derselben Aktorvariable erkennt weder ein klemmendes Ventil noch einen defekten Ausgang.
 
@@ -173,7 +183,7 @@ Laufzeittests mit IP-Symcon-Stubs (benötigt PHP 8):
 php tests/run.php
 ```
 
-Die Tests decken insbesondere die sequenzielle Ansteuerung von Pumpe und Hauptventil, den Betrieb ohne beide Versorgungs-Ausgänge, Überspringen, Pause/Fortsetzen, variable Zonenlaufzeiten und Automatikteilnahme, instanzgetrennte Fortschrittsanzeigen, die Migration von sechs auf zehn Zonen, Sensorsperren, Rückmeldefehler und das Schließen sämtlicher Ausgänge ab.
+Die Tests decken insbesondere Einzel- und Gruppenbewässerung, unterschiedliche Laufzeiten innerhalb einer Gruppe, gruppenweises Überspringen, Pause/Fortsetzen, Regen innerhalb gemischter Gruppen, die Ansteuerung von Pumpe und Hauptventil, AUS-Rückmeldungen mit beiden Einstellungen, instanzgetrennte Fortschrittsanzeigen, Migration, Sensorsperren und das Schließen sämtlicher Ausgänge ab.
 
 ## Dokumentation
 
