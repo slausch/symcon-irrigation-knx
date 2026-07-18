@@ -67,7 +67,7 @@ class WangariIrrigation extends IPSModule
         $this->EnableAction('ProgramActive');
         $this->RegisterVariableBoolean('Pause', $this->Translate('Pause'), $this->switchPresentation(), 30);
         $this->EnableAction('Pause');
-        $this->RegisterVariableBoolean('Skip', $this->Translate('Skip current zone'), $this->actionPresentation($this->Translate('Skip')), 40);
+        $this->RegisterVariableBoolean('Skip', $this->Translate('Skip zone'), $this->actionPresentation($this->Translate('Skip')), 40);
         $this->EnableAction('Skip');
         $this->RegisterVariableBoolean('EmergencyStop', $this->Translate('Safety stop'), $this->actionPresentation($this->Translate('Safety stop')), 50);
         $this->EnableAction('EmergencyStop');
@@ -140,7 +140,7 @@ class WangariIrrigation extends IPSModule
         $this->RegisterVariableBoolean('ProgramActive', $this->Translate('Irrigation program'), $this->switchPresentation(), 20);
         $this->RegisterVariableBoolean('Pause', $this->Translate('Pause'), $this->switchPresentation(), 30);
         $this->EnableAction('Pause');
-        $this->RegisterVariableBoolean('Skip', $this->Translate('Skip current zone'), $this->actionPresentation($this->Translate('Skip')), 40);
+        $this->RegisterVariableBoolean('Skip', $this->Translate('Skip zone'), $this->actionPresentation($this->Translate('Skip')), 40);
         $this->EnableAction('Skip');
         $this->RegisterVariableBoolean('EmergencyStop', $this->Translate('Safety stop'), $this->actionPresentation($this->Translate('Safety stop')), 50);
         $this->EnableAction('EmergencyStop');
@@ -167,7 +167,7 @@ class WangariIrrigation extends IPSModule
         if ($this->GetBuffer('VariablesInitialized') !== '1') {
             $this->writeValue('Automatic', $this->ReadPropertyBoolean('AutomaticDefault'));
             $this->writeValue('ManualRuntime', 10);
-            $this->writeValue('State', self::STATE_IDLE);
+            $this->setState(self::STATE_IDLE);
             $this->writeValue('CurrentZone', 0);
             $this->writeValue('RemainingSeconds', 0);
             $this->writeValue('LastError', '');
@@ -178,6 +178,7 @@ class WangariIrrigation extends IPSModule
         $this->writeValue('InterZoneSeconds', max(0, min(300, $this->ReadPropertyInteger('InterZoneSeconds'))));
         $this->initializeZoneControlsFromConfiguration();
         $this->updateZoneProfile();
+        $this->initializeStateProfile();
 
         if (count($errors) > 0) {
             $this->SetTimerInterval('ScheduleTimer', 0);
@@ -300,6 +301,7 @@ class WangariIrrigation extends IPSModule
             if ($this->isRainActive() && $this->skipCurrentZoneDueToRain()) {
                 return;
             }
+            $this->refreshStateDisplay();
         }
 
         if ($this->isRunning() && !$this->feedbackMatchesExpected()) {
@@ -358,6 +360,7 @@ class WangariIrrigation extends IPSModule
         }
 
         $phase = $this->GetBuffer('Phase');
+        $preserveDeadline = false;
         if ($phase === 'running-zone') {
             $zoneNumber = $this->getValueInteger('CurrentZone');
             $zone = $this->getZones()[$zoneNumber - 1] ?? null;
@@ -367,11 +370,28 @@ class WangariIrrigation extends IPSModule
             }
             $this->log(sprintf($this->Translate('Zone %s skipped'), $this->zoneName($zoneNumber)));
             $this->SetBuffer('QueuePosition', (string) ((int) $this->GetBuffer('QueuePosition') + 1));
-        } elseif ($phase === 'inter-zone') {
-            // A second press during the delay skips the next queued zone as well.
-            $this->SetBuffer('QueuePosition', (string) ((int) $this->GetBuffer('QueuePosition') + 1));
+        } elseif (in_array($phase, ['opening-pump', 'opening-master', 'resuming-pump', 'resuming-master', 'inter-zone'], true)) {
+            $queuePosition = $this->nextRunnableQueuePosition();
+            $queue = $this->getQueue();
+            $zoneNumber = $queue[$queuePosition] ?? 0;
+            if ($queuePosition < 0 || $zoneNumber < 1) {
+                $this->safeShutdown($this->Translate('Program completed'), false);
+                return true;
+            }
+            $this->log(sprintf($this->Translate('Zone %s skipped before opening'), $this->zoneName($zoneNumber)));
+            $this->SetBuffer('QueuePosition', (string) ($queuePosition + 1));
+            $preserveDeadline = true;
+            if ($phase === 'resuming-pump') {
+                $this->SetBuffer('Phase', 'opening-pump');
+                $phase = 'opening-pump';
+            } elseif ($phase === 'resuming-master') {
+                $this->SetBuffer('Phase', 'opening-master');
+                $phase = 'opening-master';
+            }
+            $this->SetBuffer('PausedRemainingSeconds', '0');
+            $this->SetBuffer('PauseStartedAt', '0');
         } else {
-            $this->setError($this->Translate('Skipping is only possible while watering or changing zones'));
+            $this->setError($this->Translate('Skipping is only possible while preparing, watering or changing zones'));
             return false;
         }
 
@@ -385,10 +405,19 @@ class WangariIrrigation extends IPSModule
             return true;
         }
 
-        $this->SetBuffer('Phase', 'inter-zone');
-        $this->SetBuffer('PhaseDeadline', (string) (time() + $this->zoneDelaySeconds()));
-        $this->writeValue('State', self::STATE_INTER_ZONE);
-        $this->armFeedbackDeadline();
+        $nextZone = $this->nextQueuedZoneNumber();
+        if ($phase === 'inter-zone' || $phase === 'running-zone') {
+            $this->SetBuffer('Phase', 'inter-zone');
+            if (!$preserveDeadline) {
+                $this->SetBuffer('PhaseDeadline', (string) (time() + $this->zoneDelaySeconds()));
+            }
+            $this->setState(self::STATE_INTER_ZONE, $nextZone);
+        } else {
+            $this->setState(self::STATE_OPENING_MASTER, $nextZone);
+        }
+        if (!$preserveDeadline) {
+            $this->armFeedbackDeadline();
+        }
         return true;
     }
 
@@ -439,7 +468,7 @@ class WangariIrrigation extends IPSModule
         $this->writeValue('Pause', true);
         $this->writeValue('RemainingSeconds', $remaining);
         $this->updateZoneProgress($zoneNumber, $remaining);
-        $this->writeValue('State', self::STATE_PAUSED);
+        $this->setState(self::STATE_PAUSED, $zoneNumber);
         $this->armFeedbackDeadline();
         $this->log(sprintf($this->Translate('Zone %s paused with %d second(s) remaining'), $this->zoneName($zoneNumber), $remaining));
         return true;
@@ -617,7 +646,7 @@ class WangariIrrigation extends IPSModule
 
         $this->refreshSensorState();
         if ($this->isSoilMoistureBlocked()) {
-            $this->writeValue('State', self::STATE_BLOCKED);
+            $this->setState(self::STATE_BLOCKED);
             $this->setError($this->Translate('Start blocked by soil moisture sensor'));
             return false;
         }
@@ -628,7 +657,7 @@ class WangariIrrigation extends IPSModule
                 fn (int $zoneNumber): bool => !$this->zoneRespondsToRain($zoneNumber)
             ));
             if (count($queue) === 0) {
-                $this->writeValue('State', self::STATE_BLOCKED);
+                $this->setState(self::STATE_BLOCKED);
                 $this->setError($this->Translate('Start blocked: all selected zones react to rain'));
                 return false;
             }
@@ -647,7 +676,7 @@ class WangariIrrigation extends IPSModule
         $this->writeValue('Pause', false);
         $this->writeValue('CurrentZone', 0);
         $this->clearAllZoneProgress();
-        $this->writeValue('State', self::STATE_OPENING_MASTER);
+        $this->setState(self::STATE_OPENING_MASTER, $this->nextQueuedZoneNumber());
 
         $this->SetTimerInterval('RunTimer', 1000);
         $this->log(sprintf('Irrigation started (%s)', $source));
@@ -696,7 +725,7 @@ class WangariIrrigation extends IPSModule
         $this->writeValue('RemainingSeconds', $totalSeconds);
         $this->clearAllZoneProgress();
         $this->updateZoneProgress($zoneNumber, $totalSeconds);
-        $this->writeValue('State', self::STATE_RUNNING);
+        $this->setState(self::STATE_RUNNING, $zoneNumber);
         $this->armFeedbackDeadline();
         $this->log(sprintf('Zone %d opened for %d minute(s)', $zoneNumber, $minutes));
     }
@@ -733,7 +762,7 @@ class WangariIrrigation extends IPSModule
 
         $this->SetBuffer('Phase', 'inter-zone');
         $this->SetBuffer('PhaseDeadline', (string) (time() + $this->zoneDelaySeconds()));
-        $this->writeValue('State', self::STATE_INTER_ZONE);
+        $this->setState(self::STATE_INTER_ZONE, $this->nextQueuedZoneNumber());
         $this->armFeedbackDeadline();
         return true;
     }
@@ -757,7 +786,7 @@ class WangariIrrigation extends IPSModule
         $this->SetBuffer('PauseStartedAt', '0');
         $this->writeValue('RemainingSeconds', $remaining);
         $this->updateZoneProgress($zoneNumber, $remaining);
-        $this->writeValue('State', self::STATE_RUNNING);
+        $this->setState(self::STATE_RUNNING, $zoneNumber);
         $this->armFeedbackDeadline();
         $this->log(sprintf($this->Translate('Zone %s resumed with %d second(s) remaining'), $this->zoneName($zoneNumber), $remaining));
     }
@@ -786,7 +815,7 @@ class WangariIrrigation extends IPSModule
         $this->SetBuffer('Phase', 'inter-zone');
         $this->SetBuffer('PhaseDeadline', (string) (time() + $this->zoneDelaySeconds()));
         $this->writeValue('CurrentZone', 0);
-        $this->writeValue('State', self::STATE_INTER_ZONE);
+        $this->setState(self::STATE_INTER_ZONE, $this->nextQueuedZoneNumber());
         $this->armFeedbackDeadline();
     }
 
@@ -811,7 +840,7 @@ class WangariIrrigation extends IPSModule
         }
 
         $wait = $this->mainValveSlotHasOutput(0) ? $this->pumpDelaySeconds() : 0;
-        $this->writeValue('State', self::STATE_OPENING_MASTER);
+        $this->setState(self::STATE_OPENING_MASTER, $resuming ? $this->getValueInteger('CurrentZone') : $this->nextQueuedZoneNumber());
         $this->SetBuffer('Phase', $resuming ? 'resuming-pump' : 'opening-pump');
         $this->SetBuffer('PhaseDeadline', (string) (time() + $wait));
         $this->armFeedbackDeadline();
@@ -917,7 +946,7 @@ class WangariIrrigation extends IPSModule
         $this->SetBuffer('ShutdownPending', '1');
         $this->armFeedbackDeadline();
         if (!$shutdownSimulation && $this->hasFeedbackDefinitions() && !$this->feedbackMatchesExpected()) {
-            $this->writeValue('State', self::STATE_STOPPING);
+            $this->setState(self::STATE_STOPPING);
             $this->SetTimerInterval('RunTimer', 1000);
         } else {
             $this->completeShutdown($finalState);
@@ -1045,7 +1074,7 @@ class WangariIrrigation extends IPSModule
         $this->SetBuffer('FeedbackDeadline', '0');
         $this->SetBuffer('RunFeedbackDefinitions', '[]');
         $this->SetTimerInterval('RunTimer', 0);
-        $this->writeValue('State', $finalState);
+        $this->setState($finalState);
     }
 
     private function armFeedbackDeadline(): void
@@ -1101,7 +1130,7 @@ class WangariIrrigation extends IPSModule
         $blocked = $this->isBlockedBySensors();
         $this->writeValue('SensorBlocked', $blocked);
         if (!$this->isRunning() && $this->getValueInteger('State') === self::STATE_BLOCKED && !$blocked) {
-            $this->writeValue('State', self::STATE_IDLE);
+            $this->setState(self::STATE_IDLE);
         }
     }
 
@@ -1374,6 +1403,25 @@ class WangariIrrigation extends IPSModule
         return is_array($queue) ? array_map('intval', $queue) : [];
     }
 
+    private function nextRunnableQueuePosition(): int
+    {
+        $queue = $this->getQueue();
+        $position = max(0, (int) $this->GetBuffer('QueuePosition'));
+        while ($position < count($queue) && $this->isRainActive() && $this->zoneRespondsToRain($queue[$position])) {
+            $position++;
+        }
+        return $position < count($queue) ? $position : -1;
+    }
+
+    private function nextQueuedZoneNumber(): int
+    {
+        $position = $this->nextRunnableQueuePosition();
+        if ($position < 0) {
+            return 0;
+        }
+        return (int) ($this->getQueue()[$position] ?? 0);
+    }
+
     private function getExpectedOutputs(): array
     {
         $values = json_decode($this->GetBuffer('ExpectedOutputs'), true);
@@ -1565,6 +1613,71 @@ class WangariIrrigation extends IPSModule
         }
         IPS_SetVariableCustomProfile($this->GetIDForIdent('ManualZone'), $profile);
         IPS_SetVariableCustomProfile($this->GetIDForIdent('CurrentZone'), $profile);
+    }
+
+    private function initializeStateProfile(): void
+    {
+        $profile = 'IRRKNX.State.' . $this->InstanceID;
+        if (!IPS_VariableProfileExists($profile)) {
+            IPS_CreateVariableProfile($profile, 1);
+            IPS_SetVariableProfileIcon($profile, 'Drops');
+        }
+        foreach ($this->stateDefinitions() as $state => $definition) {
+            IPS_SetVariableProfileAssociation($profile, $state, $this->Translate($definition[0]), '', $definition[1]);
+        }
+        IPS_SetVariableCustomProfile($this->GetIDForIdent('State'), $profile);
+        $state = $this->getValueInteger('State');
+        $zone = in_array($state, [self::STATE_RUNNING, self::STATE_PAUSED], true)
+            ? $this->getValueInteger('CurrentZone')
+            : $this->nextQueuedZoneNumber();
+        $this->setState($state, $zone);
+    }
+
+    private function setState(int $state, int $zoneNumber = 0): void
+    {
+        $definitions = $this->stateDefinitions();
+        $definition = $definitions[$state] ?? ['Error', 0xD32F2F];
+        $caption = $this->Translate($definition[0]);
+        if ($zoneNumber > 0) {
+            $zoneName = $this->zoneName($zoneNumber);
+            if ($state === self::STATE_OPENING_MASTER) {
+                $caption = sprintf($this->Translate('Preparing: %s'), $zoneName);
+            } elseif ($state === self::STATE_RUNNING) {
+                $caption = sprintf($this->Translate('Watering: %s'), $zoneName);
+            } elseif ($state === self::STATE_INTER_ZONE) {
+                $caption = sprintf($this->Translate('Next zone: %s'), $zoneName);
+            } elseif ($state === self::STATE_PAUSED) {
+                $caption = sprintf($this->Translate('Paused: %s'), $zoneName);
+            }
+        }
+        $profile = 'IRRKNX.State.' . $this->InstanceID;
+        if (IPS_VariableProfileExists($profile)) {
+            IPS_SetVariableProfileAssociation($profile, $state, $caption, '', $definition[1]);
+        }
+        $this->writeValue('State', $state);
+    }
+
+    private function refreshStateDisplay(): void
+    {
+        $state = $this->getValueInteger('State');
+        $zone = in_array($state, [self::STATE_RUNNING, self::STATE_PAUSED], true)
+            ? $this->getValueInteger('CurrentZone')
+            : $this->nextQueuedZoneNumber();
+        $this->setState($state, $zone);
+    }
+
+    private function stateDefinitions(): array
+    {
+        return [
+            self::STATE_IDLE => ['Idle', 0x43A047],
+            self::STATE_OPENING_MASTER => ['Opening pump and main valve', 0xF9A825],
+            self::STATE_RUNNING => ['Watering', 0x2196F3],
+            self::STATE_INTER_ZONE => ['Changing zone', 0xF9A825],
+            self::STATE_BLOCKED => ['Blocked', 0xE67E22],
+            self::STATE_ERROR => ['Error', 0xD32F2F],
+            self::STATE_STOPPING => ['Waiting for closed feedback', 0xF9A825],
+            self::STATE_PAUSED => ['Paused', 0xF9A825]
+        ];
     }
 
     private function defaultZonesJson(): string

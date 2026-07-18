@@ -160,12 +160,106 @@ $tests['skip closes the zone and repeated skip advances through the queue'] = st
     assertSameValue(false, $states[(string) $valve1], 'Skipped valve must close');
     assertSameValue('', GetValue($module->GetIDForIdent('Zone1Progress')), 'Skipped zone progress must be cleared');
     assertSameValue('inter-zone', $module->GetBuffer('Phase'), 'Configured zone delay must follow');
+    $zoneDelayDeadline = $module->GetBuffer('PhaseDeadline');
     assertSameValue(true, $module->SkipCurrentZone(), 'Second press during delay should skip the next queued zone');
+    assertSameValue($zoneDelayDeadline, $module->GetBuffer('PhaseDeadline'), 'Repeated skip must not restart the existing zone delay');
     forceDeadline($module);
     $module->Tick();
     assertSameValue(3, GetValue($module->GetIDForIdent('CurrentZone')), 'Third zone should start');
     assertSameValue(true, $module->SkipCurrentZone(), 'Last zone should be skippable');
     assertSameValue(false, GetValue($module->GetIDForIdent('ProgramActive')), 'Program must end after the last zone');
+};
+
+$tests['zones can be skipped during pump pressure build-up without opening them'] = static function (): void {
+    $pump = testCreateVariable(0, false);
+    $valve1 = testCreateVariable(0, false);
+    $valve2 = testCreateVariable(0, false);
+    $valve3 = testCreateVariable(0, false);
+    $zones = [zone(true, $valve1), zone(true, $valve2), zone(true, $valve3)];
+    $zones[0]['Name'] = 'Lawn';
+    $zones[1]['Name'] = 'Hedge';
+    $zones[2]['Name'] = 'Patio';
+    $module = newModule([
+        'Enabled' => true,
+        'Simulation' => true,
+        'PumpLeadSeconds' => 5,
+        'MainValves' => json_encode([
+            ['Enabled' => true, 'Name' => 'Pump', 'VariableID' => $pump, 'FeedbackID' => 0, 'FeedbackInverted' => false],
+            ['Enabled' => false, 'Name' => 'Main valve', 'VariableID' => 0, 'FeedbackID' => 0, 'FeedbackInverted' => false]
+        ]),
+        'Zones' => json_encode($zones)
+    ]);
+
+    assertSameValue(true, $module->StartProgram(true), 'Program should enter pump pressure build-up');
+    assertSameValue('opening-pump', $module->GetBuffer('Phase'), 'Pump delay must be active');
+    $pumpDeadline = $module->GetBuffer('PhaseDeadline');
+    $module->RequestAction('Skip', true);
+    assertSameValue(1, (int) $module->GetBuffer('QueuePosition'), 'First queued zone should be skippable from the action button during pressure build-up');
+    assertSameValue($pumpDeadline, $module->GetBuffer('PhaseDeadline'), 'Skipping must not restart pump pressure build-up');
+    $module->RequestAction('Skip', true);
+    assertSameValue(2, (int) $module->GetBuffer('QueuePosition'), 'Second queued zone should be skippable from the same button during pressure build-up');
+    assertSameValue($pumpDeadline, $module->GetBuffer('PhaseDeadline'), 'Repeated skip must retain the original pressure deadline');
+    $stateProfile = $GLOBALS['IPS_TEST_VARIABLES'][$module->GetIDForIdent('State')]['profile'];
+    assertSameValue('Preparing: Patio', $GLOBALS['IPS_TEST_PROFILES'][$stateProfile]['associations'][1]['caption'], 'Status must name the next zone');
+
+    forceDeadline($module);
+    $module->Tick();
+    assertSameValue(3, GetValue($module->GetIDForIdent('CurrentZone')), 'Only the third zone may open');
+    $states = json_decode($module->GetBuffer('SimulatedOutputs'), true);
+    assertSameValue(false, (bool) ($states[(string) $valve1] ?? false), 'First skipped valve must never open');
+    assertSameValue(false, (bool) ($states[(string) $valve2] ?? false), 'Second skipped valve must never open');
+    assertSameValue(true, (bool) ($states[(string) $valve3] ?? false), 'Third valve must open after the original pressure delay');
+    assertSameValue('Watering: Patio', $GLOBALS['IPS_TEST_PROFILES'][$stateProfile]['associations'][2]['caption'], 'Running status must name the active zone');
+
+    $lastPump = testCreateVariable(0, false);
+    $lastValve = testCreateVariable(0, false);
+    $lastModule = newModule([
+        'Enabled' => true,
+        'Simulation' => true,
+        'PumpLeadSeconds' => 5,
+        'MainValves' => json_encode([
+            ['Enabled' => true, 'Name' => 'Pump', 'VariableID' => $lastPump, 'FeedbackID' => 0, 'FeedbackInverted' => false],
+            ['Enabled' => false, 'Name' => 'Main valve', 'VariableID' => 0, 'FeedbackID' => 0, 'FeedbackInverted' => false]
+        ]),
+        'Zones' => json_encode([zone(true, $lastValve)])
+    ]);
+    assertSameValue(true, $lastModule->StartProgram(true), 'Single-zone program should enter pressure build-up');
+    $lastModule->RequestAction('Skip', true);
+    assertSameValue(false, GetValue($lastModule->GetIDForIdent('ProgramActive')), 'Skipping the last queued zone must end the program immediately');
+    $lastStates = json_decode($lastModule->GetBuffer('SimulatedOutputs'), true);
+    assertSameValue(false, (bool) ($lastStates[(string) $lastPump] ?? true), 'Pump must stop when the last queued zone is skipped before opening');
+    assertSameValue(false, (bool) ($lastStates[(string) $lastValve] ?? false), 'Last skipped zone must never open');
+};
+
+$tests['manual zone completion always closes pump and main valve'] = static function (): void {
+    $pump = testCreateVariable(0, false);
+    $mainValve = testCreateVariable(0, false);
+    $zoneValve = testCreateVariable(0, false);
+    $module = newModule([
+        'Enabled' => true,
+        'Simulation' => false,
+        'PumpLeadSeconds' => 0,
+        'InterZoneSeconds' => 0,
+        'MainValves' => json_encode([
+            ['Enabled' => true, 'Name' => 'Pump', 'VariableID' => $pump, 'FeedbackID' => 0, 'FeedbackInverted' => false],
+            ['Enabled' => true, 'Name' => 'Main valve', 'VariableID' => $mainValve, 'FeedbackID' => 0, 'FeedbackInverted' => false]
+        ]),
+        'Zones' => json_encode([zone(false, $zoneValve)])
+    ]);
+
+    $module->RequestAction('ManualRuntime', 1);
+    $module->RequestAction('ManualZone', 1);
+    assertSameValue(true, GetValue($module->GetIDForIdent('ProgramActive')), 'Manual-zone action should start independently of automatic participation');
+    assertSameValue(true, GetValue($pump), 'Pump must run for a manual zone');
+    assertSameValue(true, GetValue($mainValve), 'Main valve must open for a manual zone');
+    assertSameValue(true, GetValue($zoneValve), 'Manual zone valve must open');
+    forceDeadline($module);
+    $module->Tick();
+    assertSameValue(false, GetValue($zoneValve), 'Manual zone valve must close after its runtime');
+    assertSameValue(false, GetValue($pump), 'Pump must stop when no queued zone remains');
+    assertSameValue(false, GetValue($mainValve), 'Main valve must close when no queued zone remains');
+    assertSameValue(false, GetValue($module->GetIDForIdent('ProgramActive')), 'Manual run must be inactive after completion');
+    assertSameValue(0, GetValue($module->GetIDForIdent('State')), 'Manual completion must return to ready');
 };
 
 $tests['zone progress strings use seconds below one minute and remain instance-local'] = static function (): void {

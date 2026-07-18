@@ -47,7 +47,7 @@ class ModuleContractTest(unittest.TestCase):
 
         actions = form["actions"][1]["items"]
         self.assertTrue(any(item.get("caption") == "Pause / Resume" for item in actions))
-        self.assertTrue(any(item.get("caption") == "Skip current zone" for item in actions))
+        self.assertTrue(any(item.get("caption") == "Skip zone" for item in actions))
         self.assertTrue(any(item.get("caption") == "Safety stop" for item in actions))
         self.assertFalse(any(item.get("caption") == "Emergency stop" for item in actions))
 
@@ -81,6 +81,7 @@ class ModuleContractTest(unittest.TestCase):
         self.assertIn("'Zone' . $zone . 'Progress'", source)
         self.assertIn("CurrentZoneTotalSeconds", source)
         self.assertIn("clearAllZoneProgress", source)
+        self.assertIn("'IRRKNX.State.' . $this->InstanceID", source)
 
     def test_state_machine_has_all_safety_paths(self):
         source = MODULE.read_text(encoding="utf-8")

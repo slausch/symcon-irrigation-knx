@@ -80,6 +80,11 @@ function IPS_SetVariableProfileIcon(string $name, string $icon): void
 
 function IPS_SetVariableProfileAssociation(string $name, int $value, string $caption, string $icon, int $color): void
 {
+    $GLOBALS['IPS_TEST_PROFILES'][$name]['associations'][$value] = [
+        'caption' => $caption,
+        'icon' => $icon,
+        'color' => $color
+    ];
 }
 
 function IPS_SetVariableProfileValues(string $name, float $minimum, float $maximum, float $step): void

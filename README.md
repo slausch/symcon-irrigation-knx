@@ -14,7 +14,7 @@ Das Modul wurde neu strukturiert. Die öffentliche Referenz [`elueckel/irrigatio
 - Zeitplan nach Uhrzeit, Wochentagen und Tagesintervall mit festem Ankerdatum
 - manuelles Gesamtprogramm oder einzelne manuelle Zone
 - Pause mit geschlossenem Zonen- und Hauptventil sowie Fortsetzung der gespeicherten Restlaufzeit
-- Überspringen der laufenden oder nächsten wartenden Zone; nach der letzten Zone endet das Programm
+- Überspringen bereits während des Pumpen-Druckaufbaus, während des Zonenwechsels oder bei laufender Zone; mehrfaches Drücken öffnet die ausgelassenen Ventile nicht und startet bestehende Wartezeiten nicht neu
 - Laufzeit und Teilnahme am Automatikprogramm für jede Zone als bedienbare Variable
 - eigener Fortschritts-String je Zone, zum Beispiel `seit 7 Min, noch 53 Min`
 - Boolean-Regensensor und numerischer Bodenfeuchtesensor
@@ -23,7 +23,7 @@ Das Modul wurde neu strukturiert. Die öffentliche Referenz [`elueckel/irrigatio
 - sicherer Stopp bei Deaktivierung, Konfigurationsänderung und Neustart
 - Simulationsmodus ohne Hardware-Schaltbefehle
 - separate Testlaufzeit für die Simulation (Standard: 1 Minute je Zone)
-- Status-, Restlaufzeit-, Sperr- und Fehlervariablen für die Visualisierung
+- Status mit Namen der aktiven beziehungsweise nächsten Zone sowie Restlaufzeit-, Sperr- und Fehlervariablen für die Visualisierung
 
 ## Zentrales Sicherheitsprinzip
 
@@ -57,7 +57,7 @@ Die Instanz legt folgende bedienbare Variablen an:
 - `Automatic`: Zeitplan ein-/ausschalten
 - `ProgramActive`: Gesamtprogramm starten oder stoppen
 - `Pause`: laufende Zone, Pumpe und Hauptventil schließen; mit derselben Restlaufzeit fortsetzen
-- `Skip`: aktuelle Zone schließen und nach der Wartezeit mit der nächsten Zone fortfahren
+- `Skip`: während des Druckaufbaus oder Zonenwechsels die nächste wartende Zone ohne Ventilöffnung auslassen; eine laufende Zone schließen und nach der Wartezeit fortfahren
 - `ManualZone`: einzelne Zone starten; `0` stoppt
 - `ManualRuntime`: Laufzeit der manuellen Einzelzone
 - `PumpLeadSeconds`: Druckaufbauzeit der Pumpe in Sekunden
@@ -83,6 +83,10 @@ IRRKNX_EmergencyStop($InstanceID, 'Leckage erkannt');
 ```
 
 Manuelle Starts beachten standardmäßig ebenfalls Regen und Bodenfeuchte. Es gibt bewusst keinen stillen Sensor-Override.
+
+Der Status nennt während der Vorbereitung und des Zonenwechsels die nächste Zone, während der Bewässerung die aktive Zone und während einer Pause die pausierte Zone. Mehrfaches Überspringen während derselben Pumpen- oder Zonenwartezeit verlängert diese Wartezeit nicht.
+
+Nach der letzten noch vorhandenen Zone wird immer der vollständige Abschaltpfad ausgeführt: alle Zonenventile schließen, anschließend Pumpe stoppen und das optionale Hauptventil schließen. Das gilt gleichermaßen für Gesamtprogramme und über `Manuelle Zone` beziehungsweise `IRRKNX_StartZone()` gestartete Einzelzonen. Direkte Fremdschaltungen einer konfigurierten Ventilvariable außerhalb dieser Modulbedienung sind kein Modullauf und werden deshalb nicht als manuelle Zone überwacht.
 
 Wichtig zur Bedienlogik:
 

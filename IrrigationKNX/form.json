@@ -153,13 +153,13 @@
     }
   ],
   "actions": [
-    { "type": "Label", "label": "Use simulation for initial commissioning. Safety stop closes every configured output and records a fault." },
+    { "type": "Label", "label": "Use simulation for initial commissioning. Skip also works during pump pressure build-up and the existing delay between zones; repeated presses do not restart these delays. The status names the active or next zone. Safety stop closes every configured output and records a fault." },
     {
       "type": "RowLayout",
       "items": [
         { "type": "Button", "caption": "Start program", "onClick": "IRRKNX_StartProgram($id, true);" },
         { "type": "Button", "caption": "Pause / Resume", "onClick": "IRRKNX_TogglePause($id);" },
-        { "type": "Button", "caption": "Skip current zone", "onClick": "IRRKNX_SkipCurrentZone($id);" },
+        { "type": "Button", "caption": "Skip zone", "onClick": "IRRKNX_SkipCurrentZone($id);" },
         { "type": "Button", "caption": "Stop", "confirm": "Stop the irrigation program? A stopped program cannot be resumed.", "onClick": "IRRKNX_Stop($id);" },
         { "type": "Button", "caption": "Safety stop", "confirm": "Close all configured outputs and record a safety fault now?", "onClick": "IRRKNX_EmergencyStop($id);" }
       ]

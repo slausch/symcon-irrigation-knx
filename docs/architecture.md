@@ -17,9 +17,11 @@
 4. Nach der gemeinsamen Hauptventil-/Zonenwartezeit und gegebenenfalls bestätigter Rückmeldung startet die erste Zone.
 5. Nach Ablauf werden beide Zonenventile geschlossen.
 6. Nach der Zwischenpause startet die nächste aktivierte Zone.
-7. Nach der letzten Zone werden zunächst alle Zonen und anschließend alle Hauptventile geschlossen.
+7. Nach der letzten Zone werden zunächst alle Zonen und anschließend Pumpe und Hauptventil geschlossen. Das gilt auch für eine einzeln gestartete manuelle Zone.
 
 Es läuft niemals mehr als eine Zone gleichzeitig. Lücken in der Konfiguration sind zulässig: beispielsweise folgt auf Zone 1 direkt Zone 5, wenn die Zonen 2 bis 4 deaktiviert sind.
+
+Während `opening-pump`, `opening-master` und `inter-zone` kann die jeweils nächste Zone bereits übersprungen werden. Mehrfaches Überspringen behält die ursprünglich laufende Druckaufbau- beziehungsweise Zonenwartezeit bei; die ausgelassenen Ventile werden nicht kurz geöffnet. Der instanzlokale Status nennt dabei die nächste Zone.
 
 ## Persistente Phasen
 

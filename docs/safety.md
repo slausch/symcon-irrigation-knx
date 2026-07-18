@@ -28,7 +28,7 @@ Eine Softwaresteuerung ersetzt keine hydraulische oder elektrische Sicherheit. F
 
 Eine Pause schließt aus Sicherheitsgründen nicht nur die aktuelle Zone, sondern auch die Hauptventile beziehungsweise Pumpe. Vor dem Fortsetzen müssen konfigurierte Rückmeldungen den geschlossenen Zustand bestätigt haben.
 
-„Überspringen“ schließt zuerst das aktuelle Zonenventil. Erst nach der konfigurierten Zonenwartezeit darf die nächste Zone öffnen. Pumpe und Hauptventil bleiben während eines normalen Zonenwechsels geöffnet; nach der letzten Zone werden auch sie geschlossen.
+„Überspringen“ schließt eine bereits laufende Zone zuerst und öffnet die nächste erst nach der konfigurierten Zonenwartezeit. Während Pumpen-Druckaufbau oder Zonenwechsel kann eine noch geschlossene wartende Zone ohne Ventilbefehl übersprungen werden; mehrfaches Drücken verlängert die bereits laufende Wartezeit nicht. Pumpe und Hauptventil bleiben während eines normalen Zonenwechsels geöffnet. Sobald keine weitere Zone in der Modulwarteschlange vorhanden ist, werden sie auch bei einer manuellen Einzelzone geschlossen.
 
 Wenn `RequestAction(false)` wegen Kommunikations- oder Aktorfehler nicht ausgeführt werden kann, kann das Modul den Wasserfluss nicht physisch garantieren. Der Fehler wird in `LastError` sichtbar gemacht.
 
